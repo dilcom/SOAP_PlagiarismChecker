@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions name="shingle"
+ targetNamespace="urn:shingle"
+ xmlns:tns="urn:shingle"
+ xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope"
+ xmlns:SOAP-ENC="http://www.w3.org/2003/05/soap-encoding"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="http://tempuri.org/t.xsd"
+ xmlns:ns="urn:shingle"
+ xmlns:SOAP="http://schemas.xmlsoap.org/wsdl/soap12/"
+ xmlns:MIME="http://schemas.xmlsoap.org/wsdl/mime/"
+ xmlns:DIME="http://schemas.xmlsoap.org/ws/2002/04/dime/wsdl/"
+ xmlns:WSDL="http://schemas.xmlsoap.org/wsdl/"
+ xmlns="http://schemas.xmlsoap.org/wsdl/">
+
+<types>
+
+ <schema targetNamespace="http://tempuri.org/t.xsd"
+  xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope"
+  xmlns:SOAP-ENC="http://www.w3.org/2003/05/soap-encoding"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns:t="http://tempuri.org/t.xsd"
+  xmlns:ns="urn:shingle"
+  xmlns="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="unqualified"
+  attributeFormDefault="unqualified">
+  <import namespace="urn:shingle"/>
+  <import namespace="http://www.w3.org/2003/05/soap-encoding"/>
+  <simpleType name="type"><!-- t__type -->
+
+   <restriction base="xsd:string">
+    <enumeration value="TEXT"/><!-- t__type::TEXT -->
+    <!-- = 0 -->
+    <enumeration value="PROGRAMM-LANG-CPP"/><!-- t__type::PROGRAMM_LANG_CPP -->
+    <!-- = 1 -->
+    <enumeration value="PROGRAMM-LANG-PASCAL"/><!-- t__type::PROGRAMM_LANG_PASCAL -->
+    <!-- = 2 -->
+   </restriction>
+  </simpleType>
+  <simpleType name="status"><!-- t__status -->
+
+   <restriction base="xsd:string">
+    <enumeration value="STATE-OK"/><!-- t__status::STATE_OK -->
+    <!-- = 0 -->
+    <enumeration value="STATE-FAIL"/><!-- t__status::STATE_FAIL -->
+    <!-- = 1 -->
+    <enumeration value="STATE-BASE-EMPTY"/><!-- t__status::STATE_BASE_EMPTY -->
+    <!-- = 2 -->
+    <enumeration value="STATE-NO-SIMILAR"/><!-- t__status::STATE_NO_SIMILAR -->
+    <!-- = 3 -->
+   </restriction>
+  </simpleType>
+  <complexType name="text"><!-- t__text -->
+
+   <sequence>
+     <element name="name" type="xsd:string" minOccurs="0" maxOccurs="1" nillable="true"/><!-- t__text::name -->
+     <element name="date" type="xsd:string" minOccurs="0" maxOccurs="1" nillable="true"/><!-- t__text::date -->
+     <element name="streamData" type="xsd:string" minOccurs="0" maxOccurs="1" nillable="true"/><!-- t__text::streamData -->
+     <element name="authorName" type="xsd:string" minOccurs="0" maxOccurs="1" nillable="true"/><!-- t__text::authorName -->
+     <element name="authorGroup" type="xsd:string" minOccurs="0" maxOccurs="1" nillable="true"/><!-- t__text::authorGroup -->
+     <element name="type" type="t:type" minOccurs="1" maxOccurs="1"/><!-- t__text::type -->
+   </sequence>
+  </complexType>
+ </schema>
+
+ <schema targetNamespace="urn:shingle"
+  xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope"
+  xmlns:SOAP-ENC="http://www.w3.org/2003/05/soap-encoding"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns:t="http://tempuri.org/t.xsd"
+  xmlns:ns="urn:shingle"
+  xmlns="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="unqualified"
+  attributeFormDefault="unqualified">
+  <import namespace="http://www.w3.org/2003/05/soap-encoding"/>
+ </schema>
+
+</types>
+
+<message name="CompareText">
+ <part name="text" type="t:text"/><!-- ns__CompareText::text -->
+</message>
+
+<message name="result">
+ <part name="errCode" type="t:status"/><!-- ns__CompareText::errCode -->
+ <part name="cnt" type="xsd:int"/><!-- ns__CompareText::cnt -->
+ <part name="res1" type="xsd:float"/><!-- ns__CompareText::res1 -->
+ <part name="res2" type="xsd:float"/><!-- ns__CompareText::res2 -->
+ <part name="res3" type="xsd:float"/><!-- ns__CompareText::res3 -->
+ <part name="text1" type="t:text"/><!-- ns__CompareText::text1 -->
+ <part name="text2" type="t:text"/><!-- ns__CompareText::text2 -->
+ <part name="text3" type="t:text"/><!-- ns__CompareText::text3 -->
+</message>
+
+<portType name="shinglePortType">
+ <operation name="CompareText">
+  <documentation>Service definition of function ns__CompareText</documentation>
+  <input message="tns:CompareText"/>
+  <output message="tns:result"/>
+ </operation>
+</portType>
+
+<binding name="shingle" type="tns:shinglePortType">
+ <SOAP:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http"/>
+ <operation name="CompareText">
+  <SOAP:operation style="rpc" soapAction="urn:CompareText"/>
+  <input>
+     <SOAP:body use="encoded" namespace="urn:shingle" encodingStyle="http://www.w3.org/2003/05/soap-encoding"/>
+  </input>
+  <output>
+     <SOAP:body use="encoded" namespace="urn:shingle" encodingStyle="http://www.w3.org/2003/05/soap-encoding"/>
+  </output>
+ </operation>
+</binding>
+
+<service name="shingle">
+ <documentation>gSOAP 2.8.9 generated service definition</documentation>
+ <port name="shingle" binding="tns:shingle">
+  <SOAP:address location="http://192.168.1.3:9999"/>
+ </port>
+</service>
+
+</definitions>
