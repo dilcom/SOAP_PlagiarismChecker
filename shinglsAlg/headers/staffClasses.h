@@ -5,21 +5,22 @@
 
 using namespace std;
 
-namespace shingleAppStaff{
+namespace DePlaguarism{
 
-	struct ShingleAppText
+	struct TextDocument
 	{
 		string name,
 			authorName,
-			authorGroup;
+			authorGroup,
+			data;
 		t__type type;
 		int number;
 		tm dateTime;
 
-		ShingleAppText(const t__text & m);
-		ShingleAppText(){};
+		TextDocument(const t__text & m, int num);
+		TextDocument(){};
 	};
 
-	//ShingleAppText * getShingleAppText(const t__text & m);
+	//TextDocument * getShingleAppText(const t__text & m);
 }
 

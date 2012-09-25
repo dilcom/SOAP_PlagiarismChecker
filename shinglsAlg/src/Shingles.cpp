@@ -1,6 +1,7 @@
 #include "../headers/Shingles.h"
  
 using namespace std;
+using namespace DePlaguarism;
 
 wstring * utf8to16(char * src){
 	vector <unsigned short> utf16result;
@@ -12,7 +13,7 @@ wstring * utf8to16(char * src){
 char * utf16to8(wstring src){
 	char * utf8result = new char[src.length() * 2 + 2];
 	vector <unsigned short> utf16src;
-	for (int i = 0; i < src.length(); i++)
+	for (unsigned int i = 0; i < src.length(); i++)
 		utf16src.push_back(src[i]);
 	*(utf8::utf16to8(utf16src.begin(), utf16src.end(), utf8result)) = '\0';
 	return utf8result;
@@ -32,10 +33,12 @@ Shingle::Shingle(void)
 {
 }
 
-Shingle::Shingle(char *UTF8txt)
+Shingle::Shingle(const t__text & inText, int num)
 {
 	//canonization
-	wstring txt = *(utf8to16 (UTF8txt));
+	textData = *(new TextDocument(inText, num));
+	
+	wstring txt = *(utf8to16 (inText.streamData));
 	wstrToLower(&txt);
 	wchar_t *buff = new wchar_t[txt.length() + 1]; 
 	int posTxt = 0,
@@ -67,7 +70,7 @@ Shingle::Shingle(char *UTF8txt)
 	}
 	buff[posBuff] = L'\0';
 	//end of canonization
-	int * words = new int[wordCount + 2]; //TODO: fix error between 71 and 80 rows
+	int * words = new int[wordCount + 2];
 	words[0] = 0;
 	int posWords = 1,
 		shingleCount = max(1, wordCount - wordsInShingle + 1);
@@ -101,44 +104,61 @@ Shingle::Shingle(char *UTF8txt)
 	delete[] crcs;
 }
 
-Shingle::Shingle(int num)
-{
-	ifstream in;
-	char nmbr[20];
-	itoa(num, nmbr, 10);
-	strcat(nmbr, "article");
-	in.open(strcat(nmbr, ".shi"), ios::in | ios::binary);
-	in.read((char *) (&count), sizeof(unsigned int));
-	in.read((char *) (data), count * sizeof(unsigned int));
-	in.close();
-}
 
 Shingle::~Shingle(void)
 {
 
 }
 
-float Shingle::compareWith(Shingle a){
-	int similars = 0;
-	for (unsigned int i = 0; i < count; i++){
-		for (unsigned int j = 0; j < a.count; j++){
-			if (data[i] == a.data[j])
-				similars++;
-		}
-	}
-	similars++;
-	return min<float>(similars / (float)count, 1);
+const unsigned int * Shingle::getData(){
+	return this->data;
 }
 
-void Shingle::saveToFile(int num){
-	ofstream out;
-	char nmbr[20];
-	itoa(num, nmbr, 10);
-	strcat(nmbr, "article");
-	out.open(strcat(nmbr, ".shi"), ios::out | ios::binary);
-	out.write((char *) (&count), sizeof(unsigned int));
-	out.write((char *) (data), count * sizeof(unsigned int));
-	out.close();
+unsigned int Shingle::getCount(){
+	return count;
+}
+
+const TextDocument & Shingle::getText(){
+	return this->textData;
+}
+
+
+void Shingle::save(Db * targetDocs, Db * targetHash){
+	int length = textData.authorGroup.length() + textData.authorName.length() + textData.data.length()
+		+ textData.name.length()+ sizeof(textData.dateTime)  + sizeof(textData.type) + 5;
+	char * textDocData = new char[length];
+	int pointer = (int)textDocData;
+	memset((void*)pointer, 0, length);
+	memcpy((void*)pointer, &(textData.type), sizeof(t__type));
+	pointer += sizeof(t__type);
+	memcpy((void*)pointer, textData.authorGroup.data(), textData.authorGroup.length());
+	pointer += textData.authorGroup.length() + 1;
+	memcpy((void*)pointer, textData.authorName.data(), textData.authorName.length());
+	pointer += textData.authorName.length() + 1;
+	memcpy((void*)pointer, textData.data.data(), textData.data.length());
+	pointer += textData.data.length() + 1;
+	memcpy((void*)pointer, textData.name.data(), textData.name.length());
+	pointer += textData.name.length() + 1;
+	memcpy((void*)pointer, &(textData.dateTime), sizeof(textData.dateTime));
+	pointer += sizeof(textData.dateTime);
+
+	try{		
+		Dbt key(&(textData.number), sizeof(textData.number));
+		Dbt dataDoc(textDocData, length);
+		Dbc * cursorp;		
+		targetDocs->cursor(NULL, &cursorp, 0);
+		int ret = cursorp->put(&key, &dataDoc, DB_KEYFIRST);
+		///< key in docs table is data in hashes table
+		targetHash->cursor(NULL, &cursorp, 0);
+		for (int i = 0; i < count; i++){
+			Dbt keyHash((void*)(data + i), sizeof(data[0]));
+			cursorp->put(&keyHash, &key, DB_KEYFIRST);
+		}
+		if (cursorp) cursorp->close();
+	}
+	catch(...){
+		//TODO exceptions processing
+	}
 }
 
 const uint_least32_t Crc32Table[256] = {
@@ -208,7 +228,7 @@ const uint_least32_t Crc32Table[256] = {
     0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D
 };
 
-uint_least32_t Crc32(const unsigned char * buf, size_t len)
+uint_least32_t DePlaguarism::Crc32(const unsigned char * buf, size_t len)
 {
     uint_least32_t crc = 0xFFFFFFFF;
     while (len--)

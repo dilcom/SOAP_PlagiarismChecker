@@ -3,7 +3,7 @@
  targetNamespace="urn:shingle"
  xmlns:tns="urn:shingle"
  xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope"
- xmlns:SOAP-ENC="http://www.w3.org/2003/05/soap-encoding"
+ xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
  xmlns:t="http://tempuri.org/t.xsd"
@@ -18,7 +18,7 @@
 
  <schema targetNamespace="http://tempuri.org/t.xsd"
   xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope"
-  xmlns:SOAP-ENC="http://www.w3.org/2003/05/soap-encoding"
+  xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
   xmlns:t="http://tempuri.org/t.xsd"
@@ -27,7 +27,14 @@
   elementFormDefault="unqualified"
   attributeFormDefault="unqualified">
   <import namespace="urn:shingle"/>
-  <import namespace="http://www.w3.org/2003/05/soap-encoding"/>
+  <import namespace="http://schemas.xmlsoap.org/soap/encoding/"/>
+  <complexType name="result"><!-- t__result -->
+
+   <complexContent>
+    <restriction base="ns:ArrayOftext">
+    </restriction>
+   </complexContent>
+  </complexType>
   <simpleType name="type"><!-- t__type -->
 
    <restriction base="xsd:string">
@@ -37,6 +44,8 @@
     <!-- = 1 -->
     <enumeration value="PROGRAMM-LANG-PASCAL"/><!-- t__type::PROGRAMM_LANG_PASCAL -->
     <!-- = 2 -->
+    <enumeration value="CLEAR-TEXT"/><!-- t__type::CLEAR_TEXT -->
+    <!-- = 3 -->
    </restriction>
   </simpleType>
   <simpleType name="status"><!-- t__status -->
@@ -61,13 +70,14 @@
      <element name="authorName" type="xsd:string" minOccurs="0" maxOccurs="1" nillable="true"/><!-- t__text::authorName -->
      <element name="authorGroup" type="xsd:string" minOccurs="0" maxOccurs="1" nillable="true"/><!-- t__text::authorGroup -->
      <element name="type" type="t:type" minOccurs="1" maxOccurs="1"/><!-- t__text::type -->
+     <element name="similarity" type="xsd:float" minOccurs="1" maxOccurs="1"/><!-- t__text::similarity -->
    </sequence>
   </complexType>
  </schema>
 
  <schema targetNamespace="urn:shingle"
   xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope"
-  xmlns:SOAP-ENC="http://www.w3.org/2003/05/soap-encoding"
+  xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
   xmlns:t="http://tempuri.org/t.xsd"
@@ -75,31 +85,34 @@
   xmlns="http://www.w3.org/2001/XMLSchema"
   elementFormDefault="unqualified"
   attributeFormDefault="unqualified">
-  <import namespace="http://www.w3.org/2003/05/soap-encoding"/>
+  <import namespace="http://schemas.xmlsoap.org/soap/encoding/"/>
+  <complexType name="ArrayOftext">
+   <complexContent>
+    <restriction base="SOAP-ENC:Array">
+     <sequence>
+      <element name="item" type="t:text" minOccurs="0" maxOccurs="unbounded" nillable="false"/>
+     </sequence>
+     <attribute ref="SOAP-ENC:arrayType" WSDL:arrayType="t:text[]"/>
+    </restriction>
+   </complexContent>
+  </complexType>
  </schema>
 
 </types>
 
-<message name="CompareText">
+<message name="CompareTextRequest">
  <part name="text" type="t:text"/><!-- ns__CompareText::text -->
 </message>
 
-<message name="result">
- <part name="errCode" type="t:status"/><!-- ns__CompareText::errCode -->
- <part name="cnt" type="xsd:int"/><!-- ns__CompareText::cnt -->
- <part name="res1" type="xsd:float"/><!-- ns__CompareText::res1 -->
- <part name="res2" type="xsd:float"/><!-- ns__CompareText::res2 -->
- <part name="res3" type="xsd:float"/><!-- ns__CompareText::res3 -->
- <part name="text1" type="t:text"/><!-- ns__CompareText::text1 -->
- <part name="text2" type="t:text"/><!-- ns__CompareText::text2 -->
- <part name="text3" type="t:text"/><!-- ns__CompareText::text3 -->
+<message name="CompareTextResponse">
+ <part name="res" type="t:result"/><!-- ns__CompareText::res -->
 </message>
 
 <portType name="shinglePortType">
  <operation name="CompareText">
   <documentation>Service definition of function ns__CompareText</documentation>
-  <input message="tns:CompareText"/>
-  <output message="tns:result"/>
+  <input message="tns:CompareTextRequest"/>
+  <output message="tns:CompareTextResponse"/>
  </operation>
 </portType>
 
@@ -108,10 +121,10 @@
  <operation name="CompareText">
   <SOAP:operation style="rpc" soapAction="urn:CompareText"/>
   <input>
-     <SOAP:body use="encoded" namespace="urn:shingle" encodingStyle="http://www.w3.org/2003/05/soap-encoding"/>
+     <SOAP:body use="encoded" namespace="urn:shingle" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
   </input>
   <output>
-     <SOAP:body use="encoded" namespace="urn:shingle" encodingStyle="http://www.w3.org/2003/05/soap-encoding"/>
+     <SOAP:body use="encoded" namespace="urn:shingle" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
   </output>
  </operation>
 </binding>

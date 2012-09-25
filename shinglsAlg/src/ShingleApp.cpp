@@ -1,240 +1,199 @@
 #include "../headers/ShingleApp.h"
 
-void ShingleApp::initializeResponce(int sampNum, t__text * result){
-	vector<shingleAppStaff::ShingleAppText>::iterator it = textsArray.begin();
-	while (((*it).number != sampNum) && (it != textsArray.end()))
-		it++;
-	if (it->number == sampNum){
-		int len=it->name.length();
-		result->name = reinterpret_cast<char*>(soap_malloc(this, len+1));
-		strcpy(result->name, it->name.c_str());
-		len=it->authorName.length();
-		result->authorName = reinterpret_cast<char*>(soap_malloc(this, len+1));
-		strcpy(result->authorName, it->authorName.c_str());
-		len=it->authorGroup.length();
-		result->authorGroup = reinterpret_cast<char*>(soap_malloc(this, len+1));
-		strcpy(result->authorGroup, it->authorGroup.c_str());
-		result->streamData = NULL;
-		result->type = it->type;
-		char * buff = asctime(&(it->dateTime));
-		len = strlen(buff);
-		result->date = reinterpret_cast<char*>(soap_malloc(this, len+1));
-		strcpy(result->date, buff);
+using namespace DePlaguarism;
 
-		ifstream in;
-		char nmbr[20];
-		_itoa(sampNum, nmbr, 10);
-		strcat(nmbr, "article.text");
-		in.open(nmbr);
-		int fileSize;
-		in.read((char*)(&fileSize), sizeof(fileSize));
-		result->streamData = reinterpret_cast<char*>(soap_malloc(this, fileSize + 1));
-		in.read(result->streamData, fileSize);
-		(result->streamData)[fileSize] = '\0';
-		in.close();
+string ShingleApp::nowToStr(){
+	string res;
+	time_t a;
+	time(&a);
+	res = asctime(localtime(&a));
+	return res;
+}
+
+string ShingleApp::ipToStr(){
+	string res;
+	char str[16];
+	unsigned char * charIp = (unsigned char*)(&(this->ip));
+	_snprintf(str, 16, "%d.%d.%d.%d", charIp[3], charIp[2], charIp[1], charIp[0]);
+	res = str;
+	return res;
+}
+
+void ShingleApp::initTextById(unsigned int id, t__text * trgt){
+	clock_t time = - clock();
+	try{
+		Dbc *cursorp;
+		docs->cursor(NULL, &cursorp, 0);
+		Dbt key(&id, sizeof(id) );
+		Dbt dataItem(0, 0);
+		int ret = cursorp->get(&key, &dataItem, DB_SET);
+		char * pointer = (char *)(dataItem.get_data());
+		trgt->type = *(t__type *) pointer;
+		pointer += sizeof(t__type);
+		int len = strlen(pointer);
+		trgt->authorGroup = reinterpret_cast<char*>(soap_malloc(this, len+1));
+		strcpy(trgt->authorGroup, pointer);
+		pointer += len + 1;
+		len = strlen(pointer);
+		trgt->authorName = reinterpret_cast<char*>(soap_malloc(this, len+1));
+		strcpy(trgt->authorName, pointer);
+		pointer += len + 1;
+		len = strlen(pointer);
+		trgt->streamData = reinterpret_cast<char*>(soap_malloc(this, len+1));
+		strcpy(trgt->streamData, pointer);
+		pointer += len + 1;
+		len = strlen(pointer);
+		trgt->name = reinterpret_cast<char*>(soap_malloc(this, len+1));
+		strcpy(trgt->name, pointer);
+		pointer += len + 1;
+		char * date = asctime((tm*)pointer);
+		len = strlen(date);
+		trgt->date = reinterpret_cast<char*>(soap_malloc(this, len+1));
+		strcpy(trgt->date, date);
+	}
+	catch(...){
+		Log << "!!!ERROR in ShingleApp::initTextById \n";
+		return;
+	}
+	
+	if (LOG_EVERY_FCALL){
+		Log << "ShingleApp::initTextById execution took " << time + clock() << "msec\n";
 	}
 }
 
 
 ShingleApp::ShingleApp(void)
 {
-	Log = new ShingleAppLogger();
-	Log->addTrgt(&cout);
-	//Log->addLogFile("log.txt");
+	ifstream f;
+	f.open("docNumber.t");
+	if (f)
+		f.read((char*)(&documentCount), sizeof(documentCount));
+	else
+		documentCount = 0;
+	f.close();
+	Log.addTrgt(&cout);
+	try{
+		env = new DbEnv(0);	
+		env->open(ENV_NAME, DB_CREATE | DB_INIT_MPOOL, 0);
+		hashes = new Db(env, 0);
+		docs = new Db(env, 0);
+		hashes->set_flags(DB_DUP);
+		hashes->open(0, HASH_DB_NAME, NULL, DB_HASH, DB_CREATE, 0644);
+		docs->open(0, DOCS_DB_NAME, NULL, DB_BTREE, DB_CREATE, 0644);
+	}
+	catch (...){
+		///< TODO exception catching
+		Log << "Database opening error!" << '\n';
+		//this->~ShingleApp();
+	}
+	Log.addLogFile("log.txt");
 }
 
 ShingleApp::~ShingleApp(void)
 {
-	delete Log;
+	ofstream f;
+	f.open("docNumber.t");
+	f.write((char*)(&documentCount), sizeof(documentCount));
+	f.close();
+	hashes->close(0);
+	docs->close(0);
+	env->close(0);
+	delete hashes;
+	delete docs;
+	delete env;
 }
 
-ShingleAppLogger * ShingleApp::log(){
+ShingleAppLogger & ShingleApp::log(){
 	return Log;	
 };
 
 using namespace std;
-using namespace shingleAppStaff;
+using namespace DePlaguarism;
 
 int ShingleApp::CompareText(t__text txt, t__result * res){
 	switch (txt.type) {
-		case /*t__type::*/TEXT: 
-			return compareShingles(txt, res);
+		case TEXT: 
+			return shingleAlgorithm(txt, res);
+			break;
 	}	
 	return SOAP_ERR;
 }
 
-void ShingleApp::saveSampls(){
-	ofstream out;
-	out.open("articles.txt", ios::out);
-	int cnt = textsArray.size();
-	out.write((char *) (&(cnt)), sizeof(cnt));
-    for(vector<shingleAppStaff::ShingleAppText>::iterator it = textsArray.begin(); it != textsArray.end(); it++ ) {
-		out << it->name << '|' << it->authorName << '|' << it->authorGroup << '|';
-		out.write((char *)(&(it->number)), sizeof(int));
-		out.write((char *)(&(it->type)), sizeof(t__type));
-		out.write((char *)(&(it->dateTime)), sizeof(tm));
-    }
-	log()->toLog("Texts saved!").endLine();
-	out.close();
-}
 
-void ShingleApp::loadSampls(){
-	textsArray.clear();
-	ifstream in;
-	in.open("articles.txt", ios::in);
-	int cnt;
-	if (!in){
-		log()->toLog("Base is empty!").endLine();
-		return;
-	}
-	in.read((char *) (&cnt), sizeof(cnt) );
-	int i = 0;
+void ShingleApp::findSimilar(t__text & txt){
+	clock_t time = - clock();
+	map<unsigned int, unsigned int> fResult;
+	Shingle * tested = new Shingle(txt, documentCount);
+	Dbc *cursorp;
+	appResult.clear();
 	try{
-		for(i = 0; i < cnt; i++ ) {
-			ShingleAppText *it = new ShingleAppText();
-			char ch,
-				buff[60];
-			int pos = 0;
-			while ( (ch = in.get()) != '|') {
-				buff[pos] = ch;
-				pos++;
+		hashes->cursor(NULL, &cursorp, 0);
+		unsigned int cnt = tested->getCount();
+		unsigned int currentDocId;
+		for (unsigned int i = 0; i < cnt; i++){
+			Dbt key((void*)(tested->getData() + i), sizeof(unsigned int));
+			Dbt data(&currentDocId, sizeof(currentDocId));
+			int ret = cursorp->get(&key, &data, DB_SET);
+			while (ret != DB_NOTFOUND) {
+				unsigned int dt = *((unsigned int*)(data.get_data()));
+				map<unsigned int, unsigned int>::iterator it = fResult.find(dt);
+				if (it != fResult.end())
+					fResult[dt] = fResult[dt] + 1;
+				else fResult[dt] = 1;
+				ret = cursorp->get(&key, &data, DB_NEXT_DUP);
 			}
-			buff[pos] = '\0';
-			it->name = new char[pos + 1];
-			it->name = buff;
-			pos = 0;
-			while ( (ch = in.get()) != '|') {
-				buff[pos] = ch;
-				pos++;
-			}
-			buff[pos] = '\0';
-			it->authorName = new char[pos + 1];
-			it->authorName = buff;
-			pos = 0;
-			while ( (ch = in.get()) != '|') {
-				buff[pos] = ch;
-				pos++;
-			}
-			buff[pos] = '\0';
-			it->authorGroup = new char[pos + 1];
-			it->authorGroup = buff;
-			in.read((char *)(&(it->number)), sizeof(int));
-			in.read((char *)(&(it->type)), sizeof(t__type));
-			in.read((char *)(&(it->dateTime)), sizeof(tm));
-			textsArray.push_back(*it);
-			delete it;
 		}
+		unsigned int shCount = tested->getCount();
+		for (map<unsigned int, unsigned int>::iterator it = fResult.begin(); it != fResult.end(); it++){
+			appResult.push_back( *(new Pair(it->first, (float)(it->second)/shCount)) );
+		}
+		sort(appResult.begin(), appResult.end(), objectcomp);
+		if (!appResult.size()) appResult.push_back(Pair(0, 0));
+		if (appResult[0].similarity <= addingMax) {
+			tested->save(docs, hashes);
+			documentCount += 1;
+		}	
 	}
-	catch (exception e){
-		log()->toLog("Exception caught while reading ").toLog(i).toLog("-th sampl. Description:").endLine().toLog(e.what()).endLine();
+	catch(...){
+		Log << "!!!ERROR in ShingleApp::findSimilar\n";
 	}
-	
-	in.close();
-	int size = textsArray.size();
-	log()->toLog(size).toLog(size == 1 ? " text" :" texts").toLog(" loaded!").endLine();
-}
-
-float * ShingleApp::findSimilar(char *txt){
-	int cnt = textsArray.size();
-	float * result = new float[cnt];
-	Shingle * tested = new Shingle(txt);
-	bool flag = true;
-	for (int i = 0; i < cnt; i++){
-		result[i] = tested->compareWith(*(new Shingle(i)));
-		if (result[i] > addingMax) flag = false;
+	if (LOG_EVERY_FCALL){
+		Log << "ShingleApp::findSimilar execution took " << time + clock() << "msec\n";
 	}
-	if (flag)
-		tested->saveToFile(textsArray.size());
 	delete tested;
-	return result;
 }
 
-int ShingleApp::compareShingles(t__text txt, t__result *res){
-	ofstream out;
-	char nmbr[20];
-	_itoa(textsArray.size(), nmbr, 10);
-	strcat(nmbr, "article.text");
-	out.open(nmbr);
-	int fileSize = strlen(txt.streamData);
-	out.write((char *) (&fileSize), sizeof(fileSize));
-	out.write(txt.streamData, strlen(txt.streamData));
-	out.close();
-
-	clock_t timeEllapsed = - clock();
-	log()->toLog("Request recieved from ").toLogIp(this->ip).endLine();
-
-	setlocale(0, "ru_RU.UTF-8");
-	this->mode = this->mode | SOAP_C_UTFSTRING;
-	res->errCode = STATE_OK;
-	res->cnt = 0;
-	int cnt = textsArray.size();
-
-	if (cnt == 0){
-		Shingle a(txt.streamData);
-		a.saveToFile(textsArray.size());
-		ShingleAppText * m = new ShingleAppText(txt);
-		m->number = textsArray.size();
-		textsArray.push_back(*m);
-		res->errCode = STATE_BASE_EMPTY;
-		delete m;
+int ShingleApp::shingleAlgorithm(t__text txt, t__result *res){
+	Log << "Request from " << ipToStr() << " recieved\n";
+	clock_t time = - clock();
+	findSimilar(txt);
+	int i = 0;
+	int arrSize = appResult.size();
+	while (appResult[i].similarity >= similarity && i < 10 && i < arrSize - 1)
+		i += 1;
+	if (appResult[i].similarity < similarity)
+		i -= 1;
+	res->cnt = i + 1;
+	res->errCode = res->cnt ? STATE_OK : STATE_NO_SIMILAR;
+	res->__size = res->cnt;
+	res->__ptr = new t__text[res->cnt];
+	for (int j = 0; j <= i; j += 1){
+		res->__ptr[i].similarity = appResult[i].similarity;
+		initTextById(appResult[i].docId, res->__ptr + i);
 	}
-	else{ //base isnt empty
-		float * resArr = findSimilar(txt.streamData);
-		float firstMax = resArr[0];
-		int firstMaxNum = 0;
-		for (int i = 1; i < cnt; i++)
-			if (firstMax < resArr[i]){
-				firstMax = resArr[i];
-				firstMaxNum = i;
-			}
-			if (firstMax > similarity){
-				res->cnt++;
-				res->res1 = firstMax;
-				initializeResponce(firstMaxNum, &(res->text1));
-				resArr[firstMaxNum] = 0;
-				float secondMax = resArr[0];
-				int secondMaxNum = 0;
-				for (int i = 1; i < cnt; i++)
-					if (secondMax < resArr[i]){
-						secondMax = resArr[i];
-						secondMaxNum = i;
-					}
-					if (secondMax > similarity && cnt > 1){
-						res->cnt++;
-						res->res2 = secondMax;
-						initializeResponce(secondMaxNum, &(res->text2));
-						resArr[secondMaxNum] = 0;
-						float thirdMax = resArr[0];
-						int thirdMaxNum = 0;
-						for (int i = 1; i < cnt; i++)
-							if (thirdMax < resArr[i]){
-								thirdMax = resArr[i];
-								thirdMaxNum = i;
-							}
-							if (thirdMax > similarity && cnt > 2){
-								res->cnt++;
-								res->res3 = secondMax;
-								initializeResponce(thirdMaxNum, &(res->text3));
-							}
-					}
-			}
-			else res->errCode = STATE_NO_SIMILAR;
-			if (firstMax < addingMax) {
-				ShingleAppText * m = new ShingleAppText(txt);
-				m->number = textsArray.size();
-				textsArray.push_back(*m);
-				delete m;
-			}
-			delete resArr;
+	if (LOG_EVERY_FCALL){
+		Log << "Request processed\n\n";
 	}
-
-	#ifndef MODE_DO_NOT_SAVE_RESULTS
-		saveSampls();
-	#endif
-
-	timeEllapsed += clock();
-
-	log()->toLog("Request processing took ").toLog(timeEllapsed).toLog(" msec").endLine();
-
 	return SOAP_OK;
+}
+
+
+bool operator==(const Pair & left, const Pair & right)
+{ 
+	return left.docId == right.docId;
+}
+
+bool ClassComp::operator() (const Pair & left, const Pair & right) const
+{
+	return left.similarity > right.similarity;
 }
