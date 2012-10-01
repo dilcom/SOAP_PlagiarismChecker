@@ -3,7 +3,6 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <time.h>
 
 using namespace std;
 namespace DePlaguarism{

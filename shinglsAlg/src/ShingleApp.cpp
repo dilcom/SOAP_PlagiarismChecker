@@ -1,3 +1,4 @@
+#include "../headers/stdafx.h"
 #include "../headers/ShingleApp.h"
 
 using namespace DePlaguarism;
@@ -28,27 +29,32 @@ void ShingleApp::initTextById(unsigned int id, t__text * trgt){
 		Dbt dataItem(0, 0);
 		int ret = cursorp->get(&key, &dataItem, DB_SET);
 		char * pointer = (char *)(dataItem.get_data());
-		trgt->type = *(t__type *) pointer;
-		pointer += sizeof(t__type);
-		int len = strlen(pointer);
-		trgt->authorGroup = reinterpret_cast<char*>(soap_malloc(this, len+1));
-		strcpy(trgt->authorGroup, pointer);
-		pointer += len + 1;
-		len = strlen(pointer);
-		trgt->authorName = reinterpret_cast<char*>(soap_malloc(this, len+1));
-		strcpy(trgt->authorName, pointer);
-		pointer += len + 1;
-		len = strlen(pointer);
-		trgt->streamData = reinterpret_cast<char*>(soap_malloc(this, len+1));
-		strcpy(trgt->streamData, pointer);
-		pointer += len + 1;
-		len = strlen(pointer);
-		trgt->name = reinterpret_cast<char*>(soap_malloc(this, len+1));
-		strcpy(trgt->name, pointer);
-		pointer += len + 1;
-		char * date = asctime((tm*)pointer);
-		len = strlen(date);
-		trgt->date = reinterpret_cast<char*>(soap_malloc(this, len+1));
+		DocHeader header = *(DocHeader *) pointer;
+		trgt->type = header.type;
+		pointer += sizeof(DocHeader);
+
+		trgt->authorGroup = reinterpret_cast<char*>(soap_malloc(this, header.authorGroup_len + 1));
+		memcpy(trgt->authorGroup, pointer, header.authorGroup_len);
+		trgt->authorGroup[header.authorGroup_len] = '\0';
+		pointer += header.authorGroup_len;
+
+		trgt->authorName = reinterpret_cast<char*>(soap_malloc(this, header.authorName_len + 1));
+		memcpy(trgt->authorName, pointer, header.authorName_len);
+		trgt->authorName[header.authorName_len] = '\0';
+		pointer += header.authorName_len;
+
+		trgt->streamData = reinterpret_cast<char*>(soap_malloc(this, header.data_len + 1));
+		memcpy(trgt->streamData, pointer, header.data_len);
+		trgt->streamData[header.data_len] = '\0';
+		pointer += header.data_len;
+
+		trgt->name = reinterpret_cast<char*>(soap_malloc(this, header.textName_len + 1));
+		memcpy(trgt->name, pointer, header.textName_len);;
+		trgt->name[header.data_len] = '\0';
+		pointer += header.textName_len;
+
+		char * date = asctime(&(header.dateTime));
+		trgt->date = reinterpret_cast<char*>(soap_malloc(this, strlen(date) + 1));
 		strcpy(trgt->date, date);
 	}
 	catch(...){
@@ -149,7 +155,7 @@ void ShingleApp::findSimilar(t__text & txt){
 		}
 		sort(appResult.begin(), appResult.end(), objectcomp);
 		if (!appResult.size()) appResult.push_back(Pair(0, 0));
-		if (appResult[0].similarity <= addingMax) {
+		if (appResult[0].similarity <= THRESHOLD_TO_SAVE) {
 			tested->save(docs, hashes);
 			documentCount += 1;
 		}	
@@ -167,19 +173,13 @@ int ShingleApp::shingleAlgorithm(t__text txt, t__result *res){
 	Log << "Request from " << ipToStr() << " recieved\n";
 	clock_t time = - clock();
 	findSimilar(txt);
-	int i = 0;
-	int arrSize = appResult.size();
-	while (appResult[i].similarity >= similarity && i < 10 && i < arrSize - 1)
-		i += 1;
-	if (appResult[i].similarity < similarity)
-		i -= 1;
-	res->cnt = i + 1;
+	res->cnt = min(appResult.size(), DOCUMENTS_IN_RESPONCE);
 	res->errCode = res->cnt ? STATE_OK : STATE_NO_SIMILAR;
 	res->__size = res->cnt;
 	res->__ptr = new t__text[res->cnt];
-	for (int j = 0; j <= i; j += 1){
-		res->__ptr[i].similarity = appResult[i].similarity;
-		initTextById(appResult[i].docId, res->__ptr + i);
+	for (int j = 0; j < res->cnt; j += 1){
+		res->__ptr[j].similarity = appResult[j].similarity;
+		initTextById(appResult[j].docId, res->__ptr + j);
 	}
 	if (LOG_EVERY_FCALL){
 		Log << "Request processed\n\n";

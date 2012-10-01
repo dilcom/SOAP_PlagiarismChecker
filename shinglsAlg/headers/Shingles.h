@@ -1,17 +1,9 @@
 #pragma once
 
-#include <string>
-#include <fstream>
-#include <iostream>
-#include <stddef.h>
-#include <stdint.h>
 #include "../include/utf8.h"
-#include <vector>
-#include <algorithm>
 #include "constants.h"
 #include "staffClasses.h"
 #include "../include/db_cxx.h"
-#pragma comment (lib, "../lib/libdb53.lib")
 
 using namespace DePlaguarism;
 
@@ -20,7 +12,7 @@ namespace DePlaguarism{
 	class Shingle
 	{
 	protected:
-		unsigned int data[maxShingleCount]; ///< array with crc32 hashes from given text
+		unsigned int data[MAX_SHINGLE_PER_TEXT]; ///< array with crc32 hashes from given text
 		unsigned int count; ///< data field length
 		TextDocument textData;
 	public:

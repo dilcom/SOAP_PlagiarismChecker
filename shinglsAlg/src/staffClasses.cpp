@@ -11,6 +11,10 @@ TextDocument::TextDocument(const t__text & m, int num)
 	this->data = m.streamData;
 	time_t a;
 	time(&a);
-	this->dateTime = *(localtime(&a));
-	this->type = m.type;
+	this->header.dateTime = *(localtime(&a));
+	this->header.type = m.type;
+	this->header.authorGroup_len = authorGroup.length();
+	this->header.authorName_len = authorName.length();
+	this->header.data_len = data.length();
+	this->header.textName_len = name.length();
 }

@@ -1,4 +1,6 @@
+#include "../headers/stdafx.h"
 #include "../headers/Shingles.h"
+#pragma comment (lib, "../lib/libdb53.lib")
  
 using namespace std;
 using namespace DePlaguarism;
@@ -50,7 +52,7 @@ Shingle::Shingle(const t__text & inText, int num)
 		posTxt++;
 	while (posTxt < txt.length()){
 		if (txt[posTxt] == L' ' || txt[posTxt] == L'\n')
-			if (curWordLength > minWordLength ){
+			if (curWordLength > MIN_WORD_LENGTH ){
 				buff[posBuff] = L' ';
 				lastSpacePos = posBuff;
 				curWordLength = 0;
@@ -73,8 +75,8 @@ Shingle::Shingle(const t__text & inText, int num)
 	int * words = new int[wordCount + 2];
 	words[0] = 0;
 	int posWords = 1,
-		shingleCount = max(1, wordCount - wordsInShingle + 1);
-	count = min(shingleCount, maxShingleCount);
+		shingleCount = max(1, wordCount - WORDS_EACH_SHINGLE + 1);
+	count = min(shingleCount, MAX_SHINGLE_PER_TEXT);
 	for (int i = 0; i < posBuff; i++){
 		if (buff[i] == ' ')
 			words[posWords++] = i;
@@ -82,9 +84,9 @@ Shingle::Shingle(const t__text & inText, int num)
 	words[posWords] = posBuff;
 	unsigned int *crcs = new unsigned int[shingleCount];
 	for (int i = 0; i < shingleCount; i++){
-		crcs[i] = Crc32(reinterpret_cast<const unsigned char*>(buff + words[i]), (words[i + min(wordsInShingle, wordCount)] - words[i])*sizeof(wchar_t));
+		crcs[i] = Crc32(reinterpret_cast<const unsigned char*>(buff + words[i]), (words[i + min(WORDS_EACH_SHINGLE, wordCount)] - words[i])*sizeof(wchar_t));
 	}
-	if (shingleCount > maxShingleCount)
+	if (shingleCount > MAX_SHINGLE_PER_TEXT)
 		for (int i = 0; i < count; i++){
 			unsigned int minData = crcs[0],
 				minI = 0;
@@ -124,23 +126,20 @@ const TextDocument & Shingle::getText(){
 
 
 void Shingle::save(Db * targetDocs, Db * targetHash){
-	int length = textData.authorGroup.length() + textData.authorName.length() + textData.data.length()
-		+ textData.name.length()+ sizeof(textData.dateTime)  + sizeof(textData.type) + 5;
+	int length = sizeof(textData.header) + textData.authorGroup.length() + textData.authorName.length() + textData.data.length()
+		+ textData.name.length();
 	char * textDocData = new char[length];
 	int pointer = (int)textDocData;
-	memset((void*)pointer, 0, length);
-	memcpy((void*)pointer, &(textData.type), sizeof(t__type));
-	pointer += sizeof(t__type);
+	memcpy((void*)pointer, &(textData.header), sizeof(DocHeader));
+	pointer += sizeof(DocHeader);
 	memcpy((void*)pointer, textData.authorGroup.data(), textData.authorGroup.length());
-	pointer += textData.authorGroup.length() + 1;
+	pointer += textData.authorGroup.length();
 	memcpy((void*)pointer, textData.authorName.data(), textData.authorName.length());
-	pointer += textData.authorName.length() + 1;
+	pointer += textData.authorName.length();
 	memcpy((void*)pointer, textData.data.data(), textData.data.length());
-	pointer += textData.data.length() + 1;
+	pointer += textData.data.length();
 	memcpy((void*)pointer, textData.name.data(), textData.name.length());
-	pointer += textData.name.length() + 1;
-	memcpy((void*)pointer, &(textData.dateTime), sizeof(textData.dateTime));
-	pointer += sizeof(textData.dateTime);
+	pointer += textData.name.length();
 
 	try{		
 		Dbt key(&(textData.number), sizeof(textData.number));
