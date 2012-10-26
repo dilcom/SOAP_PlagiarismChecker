@@ -48,9 +48,10 @@ Shingle::Shingle(const t__text & inText, int num)
 		wordCount = 0,
 		curWordLength = 0,
 		lastSpacePos = -1;
-	while (!isAlph( txt[posTxt] )) 
+	size_t txtLength = txt.length();
+	while ( posTxt < txtLength && !isAlph( txt[posTxt] )) 
 		posTxt++;
-	while (posTxt < txt.length()){
+	while (posTxt < txtLength){
 		if (txt[posTxt] == L' ' || txt[posTxt] == L'\n')
 			if (curWordLength > MIN_WORD_LENGTH ){
 				buff[posBuff] = L' ';

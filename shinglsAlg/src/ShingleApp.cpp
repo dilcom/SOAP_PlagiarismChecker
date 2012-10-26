@@ -3,6 +3,8 @@
 
 using namespace DePlaguarism;
 
+
+
 string ShingleApp::nowToStr(){
 	string res;
 	time_t a;
@@ -50,7 +52,7 @@ void ShingleApp::initTextById(unsigned int id, t__text * trgt){
 
 		trgt->name = reinterpret_cast<char*>(soap_malloc(this, header.textName_len + 1));
 		memcpy(trgt->name, pointer, header.textName_len);;
-		trgt->name[header.data_len] = '\0';
+		trgt->name[header.textName_len] = '\0';
 		pointer += header.textName_len;
 
 		char * date = asctime(&(header.dateTime));
@@ -104,9 +106,9 @@ ShingleApp::~ShingleApp(void)
 	hashes->close(0);
 	docs->close(0);
 	env->close(0);
-	delete hashes;
-	delete docs;
-	delete env;
+	//delete hashes;
+	//delete docs;
+	//delete env;
 }
 
 ShingleAppLogger & ShingleApp::log(){
@@ -120,7 +122,6 @@ int ShingleApp::CompareText(t__text txt, t__result * res){
 	switch (txt.type) {
 		case TEXT: 
 			return shingleAlgorithm(txt, res);
-			break;
 	}	
 	return SOAP_ERR;
 }
@@ -129,7 +130,8 @@ int ShingleApp::CompareText(t__text txt, t__result * res){
 void ShingleApp::findSimilar(t__text & txt){
 	clock_t time = - clock();
 	map<unsigned int, unsigned int> fResult;
-	Shingle * tested = new Shingle(txt, documentCount);
+	Shingle * tested = 
+		new Shingle(txt, documentCount);
 	Dbc *cursorp;
 	appResult.clear();
 	try{
@@ -173,13 +175,13 @@ int ShingleApp::shingleAlgorithm(t__text txt, t__result *res){
 	Log << "Request from " << ipToStr() << " recieved\n";
 	clock_t time = - clock();
 	findSimilar(txt);
-	res->cnt = min(appResult.size(), DOCUMENTS_IN_RESPONCE);
-	res->errCode = res->cnt ? STATE_OK : STATE_NO_SIMILAR;
-	res->__size = res->cnt;
-	res->__ptr = new t__text[res->cnt];
-	for (int j = 0; j < res->cnt; j += 1){
-		res->__ptr[j].similarity = appResult[j].similarity;
-		initTextById(appResult[j].docId, res->__ptr + j);
+	int cnt = min(appResult.size(), DOCUMENTS_IN_RESPONCE);
+	res->errCode = cnt ? STATE_OK : STATE_NO_SIMILAR;
+	for (int j = 0; j < cnt; j += 1){
+		t__text * textElement = new t__text();
+		initTextById(appResult[j].docId, textElement);
+		textElement->similarity = appResult[j].similarity;
+		res->arrayOfTexts.push_back(*textElement);
 	}
 	if (LOG_EVERY_FCALL){
 		Log << "Request processed\n\n";

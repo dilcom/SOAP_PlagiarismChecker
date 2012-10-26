@@ -39,9 +39,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	soap_set_omode(srv, SOAP_C_UTFSTRING);
 	srv->fget = http_get;
 	srv->log() << "Server putted up!\n" << srv->nowToStr() << '\n';
-
-    if (srv->run(SERVICE_PORT)){
-		srv->log() << "Warning! Server is down at " << srv->nowToStr() << '\n';
+    while (srv->run(SERVICE_PORT)){
+		srv->log() << "Warning! Server is down \n" << "Server putted up!\n" << srv->nowToStr() << '\n';
 	};
 	system("pause");
     return 0;
