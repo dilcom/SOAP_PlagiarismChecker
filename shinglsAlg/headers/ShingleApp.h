@@ -39,6 +39,7 @@ namespace DePlaguarism{
 		ShingleAppLogger Log;  ///<logger object. Sends messages in several streams
 		int shingleAlgorithm(t__text txt, t__result *res); ///< compare two texts using algorithm based on shingles
 		int documentCount;
+		int qCount;
 	public:
 		string nowToStr(); ///< converts current date/time to string
 		string ipToStr(); ///< converts current client`s ip to string
@@ -47,5 +48,7 @@ namespace DePlaguarism{
 		~ShingleApp();
 		virtual	int CompareText(t__text txt, t__result *res);  ///<main method which process incoming request
 	};
+
+	bool txtValid(t__text a);
 
 }

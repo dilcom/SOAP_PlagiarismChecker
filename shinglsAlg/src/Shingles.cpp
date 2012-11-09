@@ -23,8 +23,7 @@ char * utf16to8(wstring src){
 
 void wstrToLower(wstring * ws){
 	std::transform(ws->begin(), ws->end(), ws->begin(),
-                 std::bind1st(std::mem_fun<wchar_t, std::ctype<wchar_t>, wchar_t>(&std::ctype<wchar_t>::tolower),
-                              &std::use_facet<std::ctype<wchar_t> >(std::locale())));
+                 towlower);
 }
 
 inline bool isAlph(wchar_t a){
@@ -73,7 +72,9 @@ Shingle::Shingle(const t__text & inText, int num)
 	}
 	buff[posBuff] = L'\0';
 	//end of canonization
-	int * words = new int[wordCount + 2];
+	if (posBuff != 0)
+		wordCount += 1;
+	int * words = new int[wordCount + 1];
 	words[0] = 0;
 	int posWords = 1,
 		shingleCount = max(1, wordCount - WORDS_EACH_SHINGLE + 1);
@@ -102,9 +103,9 @@ Shingle::Shingle(const t__text & inText, int num)
 	else
 		for (int i = 0; i < count; i++)
 			data[i] = crcs[i];
-	delete[] buff;
 	delete[] words;
 	delete[] crcs;
+	delete[] buff;
 }
 
 
@@ -159,6 +160,7 @@ void Shingle::save(Db * targetDocs, Db * targetHash){
 	catch(...){
 		//TODO exceptions processing
 	}
+	delete[] textDocData;
 }
 
 const uint_least32_t Crc32Table[256] = {

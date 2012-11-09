@@ -3,6 +3,10 @@
 
 using namespace DePlaguarism;
 
+bool DePlaguarism::txtValid(t__text a){
+	return (a.streamData && a.authorGroup && a.authorName && a.name);
+}
+
 
 
 string ShingleApp::nowToStr(){
@@ -80,6 +84,7 @@ ShingleApp::ShingleApp(void)
 		documentCount = 0;
 	f.close();
 	Log.addTrgt(&cout);
+	qCount = 0;
 	try{
 		env = new DbEnv(0);	
 		env->open(ENV_NAME, DB_CREATE | DB_INIT_MPOOL, 0);
@@ -119,10 +124,11 @@ using namespace std;
 using namespace DePlaguarism;
 
 int ShingleApp::CompareText(t__text txt, t__result * res){
-	switch (txt.type) {
-		case TEXT: 
-			return shingleAlgorithm(txt, res);
-	}	
+	if (txtValid(txt))
+		switch (txt.type) {
+			case TEXT: 
+				return shingleAlgorithm(txt, res);
+		}
 	return SOAP_ERR;
 }
 
@@ -130,8 +136,7 @@ int ShingleApp::CompareText(t__text txt, t__result * res){
 void ShingleApp::findSimilar(t__text & txt){
 	clock_t time = - clock();
 	map<unsigned int, unsigned int> fResult;
-	Shingle * tested = 
-		new Shingle(txt, documentCount);
+	Shingle * tested = new Shingle(txt, documentCount);
 	Dbc *cursorp;
 	appResult.clear();
 	try{
@@ -156,8 +161,7 @@ void ShingleApp::findSimilar(t__text & txt){
 			appResult.push_back( *(new Pair(it->first, (float)(it->second)/shCount)) );
 		}
 		sort(appResult.begin(), appResult.end(), objectcomp);
-		if (!appResult.size()) appResult.push_back(Pair(0, 0));
-		if (appResult[0].similarity <= THRESHOLD_TO_SAVE) {
+		if (appResult.empty() || appResult[0].similarity <= THRESHOLD_TO_SAVE) {
 			tested->save(docs, hashes);
 			documentCount += 1;
 		}	
@@ -172,8 +176,8 @@ void ShingleApp::findSimilar(t__text & txt){
 }
 
 int ShingleApp::shingleAlgorithm(t__text txt, t__result *res){
-	Log << "Request from " << ipToStr() << " recieved\n";
 	clock_t time = - clock();
+	Log << "Request from " << ipToStr() << " recieved\n";
 	findSimilar(txt);
 	int cnt = min(appResult.size(), DOCUMENTS_IN_RESPONCE);
 	res->errCode = cnt ? STATE_OK : STATE_NO_SIMILAR;
@@ -182,9 +186,18 @@ int ShingleApp::shingleAlgorithm(t__text txt, t__result *res){
 		initTextById(appResult[j].docId, textElement);
 		textElement->similarity = appResult[j].similarity;
 		res->arrayOfTexts.push_back(*textElement);
+		delete textElement;
 	}
+	qCount += 1;
 	if (LOG_EVERY_FCALL){
-		Log << "Request processed\n\n";
+		Log << "Request num " << qCount << " processed in " << time+clock() << "msec\n";
+		Log << "Text size: " << (int)(sizeof(char)*strlen(txt.streamData)) << " bytes\n\n";
+	}
+	if (qCount % 500 == 0){
+		ofstream f;
+		f.open("docNumber.t");
+		f.write((char*)(&documentCount), sizeof(documentCount));
+		f.close();
 	}
 	return SOAP_OK;
 }

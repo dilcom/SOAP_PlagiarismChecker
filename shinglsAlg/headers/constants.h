@@ -4,7 +4,7 @@
 namespace DePlaguarism{
 	//Shingle.h
 	const int MAX_SHINGLE_PER_TEXT = 120; // max Shingles in text (if more then 120 minimal)
-	const int WORDS_EACH_SHINGLE = 5; // words in each Shingle
+	const int WORDS_EACH_SHINGLE = 4; // words in each Shingle
 	const int MIN_WORD_LENGTH = 3; // min word length to be processed
 
 	//ShingleApp.h
@@ -18,5 +18,5 @@ namespace DePlaguarism{
 	//logger mode const
 	const bool LOG_EVERY_FCALL = true;
 }
-//mode constants 
+//mode constants
 //#define MODE_DO_NOT_SAVE_RESULTS // database file will not be saved
