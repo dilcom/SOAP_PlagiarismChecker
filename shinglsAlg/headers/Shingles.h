@@ -3,18 +3,23 @@
 #include "../include/utf8.h"
 #include "constants.h"
 #include "staffClasses.h"
-#include "../include/db_cxx.h"
+
+#ifdef __WIN32__
+    #include "../include/Win32/db_cxx.h"
+#else
+    #include "../include/UNIX/db_cxx.h"
+#endif
 
 using namespace DePlaguarism;
 
 namespace DePlaguarism{
 
 	class Shingle
-	{
+    {
 	protected:
 		unsigned int data[MAX_SHINGLE_PER_TEXT]; ///< array with crc32 hashes from given text
 		unsigned int count; ///< data field length
-		TextDocument textData;
+        TextDocument *textData;
 	public:
 		const unsigned int * getData(); ///< getter for data field
 		unsigned int getCount(); ///< getter for count field

@@ -9,7 +9,7 @@ namespace DePlaguarism{
 
 	//ShingleApp.h
 	const float THRESHOLD_TO_SAVE = 0.6; // maximum value from which new texts won`t be added to the database
-	const unsigned int DOCUMENTS_IN_RESPONCE = 10;// maximum count of documents which will be responced to client
+	const unsigned int DOCUMENTS_IN_RESPONSE = 10;// maximum count of documents which will be responced to client
 
 	const char HASH_DB_NAME[] = "hash.db";
 	const char DOCS_DB_NAME[] = "docs.db";

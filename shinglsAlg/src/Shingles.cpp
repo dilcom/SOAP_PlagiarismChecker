@@ -27,7 +27,7 @@ void wstrToLower(wstring * ws){
 }
 
 inline bool isAlph(wchar_t a){
-	return (a >= L'A' && a <= L'Z') || (a >= L'a' && a <= L'z') || (a >= L'�' && a <= L'�') || (a >= L'�' && a <= L'�');
+	return (a >= L'A' && a <= L'Z') || (a >= L'a' && a <= L'z') || (a >= L'Рђ' && a <= L'РЇ') || (a >= L'Р°' && a <= L'СЏ');
 }
 
 Shingle::Shingle(void)
@@ -37,9 +37,10 @@ Shingle::Shingle(void)
 Shingle::Shingle(const t__text & inText, int num)
 {
 	//canonization
-	textData = *(new TextDocument(inText, num));
+    textData = new TextDocument(inText, num);
 	
-	wstring txt = *(utf8to16 (inText.streamData));
+    wstring *ptrtxt = utf8to16 (inText.streamData);
+    wstring txt = *ptrtxt;
 	wstrToLower(&txt);
 	wchar_t *buff = new wchar_t[txt.length() + 1]; 
 	int posTxt = 0,
@@ -51,7 +52,7 @@ Shingle::Shingle(const t__text & inText, int num)
 	while ( posTxt < txtLength && !isAlph( txt[posTxt] )) 
 		posTxt++;
 	while (posTxt < txtLength){
-		if (txt[posTxt] == L' ' || txt[posTxt] == L'\n')
+        if (txt[posTxt] == L' ' || txt[posTxt] == L'\n'){
 			if (curWordLength > MIN_WORD_LENGTH ){
 				buff[posBuff] = L' ';
 				lastSpacePos = posBuff;
@@ -63,6 +64,7 @@ Shingle::Shingle(const t__text & inText, int num)
 				posBuff = lastSpacePos + 1;
 				curWordLength = 0;
 			}
+        }
 		if (isAlph(txt[posTxt])){
 				buff[posBuff] = txt[posTxt];
 				curWordLength++;
@@ -74,7 +76,7 @@ Shingle::Shingle(const t__text & inText, int num)
 	//end of canonization
 	if (posBuff != 0)
 		wordCount += 1;
-	int * words = new int[wordCount + 1];
+    int * words = new int[wordCount + 10];
 	words[0] = 0;
 	int posWords = 1,
 		shingleCount = max(1, wordCount - WORDS_EACH_SHINGLE + 1);
@@ -104,14 +106,15 @@ Shingle::Shingle(const t__text & inText, int num)
 		for (int i = 0; i < count; i++)
 			data[i] = crcs[i];
 	delete[] words;
+    delete ptrtxt;
 	delete[] crcs;
 	delete[] buff;
 }
 
 
 Shingle::~Shingle(void)
-{
-
+{    
+    delete textData;
 }
 
 const unsigned int * Shingle::getData(){
@@ -123,28 +126,28 @@ unsigned int Shingle::getCount(){
 }
 
 const TextDocument & Shingle::getText(){
-	return this->textData;
+    return *(this->textData);
 }
 
 
 void Shingle::save(Db * targetDocs, Db * targetHash){
-	int length = sizeof(textData.header) + textData.authorGroup.length() + textData.authorName.length() + textData.data.length()
-		+ textData.name.length();
-	char * textDocData = new char[length];
-	int pointer = (int)textDocData;
-	memcpy((void*)pointer, &(textData.header), sizeof(DocHeader));
+    int length = sizeof(textData->header) + textData->authorGroup.length() + textData->authorName.length() + textData->data.length()
+        + textData->name.length();
+    char * textDocData = new char[length];
+    char * pointer = textDocData;
+    memcpy(pointer, &(textData->header), sizeof(DocHeader));
 	pointer += sizeof(DocHeader);
-	memcpy((void*)pointer, textData.authorGroup.data(), textData.authorGroup.length());
-	pointer += textData.authorGroup.length();
-	memcpy((void*)pointer, textData.authorName.data(), textData.authorName.length());
-	pointer += textData.authorName.length();
-	memcpy((void*)pointer, textData.data.data(), textData.data.length());
-	pointer += textData.data.length();
-	memcpy((void*)pointer, textData.name.data(), textData.name.length());
-	pointer += textData.name.length();
+    memcpy(pointer, textData->authorGroup.data(), textData->authorGroup.length());
+    pointer += textData->authorGroup.length();
+    memcpy(pointer, textData->authorName.data(), textData->authorName.length());
+    pointer += textData->authorName.length();
+    memcpy(pointer, textData->data.data(), textData->data.length());
+    pointer += textData->data.length();
+    memcpy(pointer, textData->name.data(), textData->name.length());
+    pointer += textData->name.length();
 
 	try{		
-		Dbt key(&(textData.number), sizeof(textData.number));
+        Dbt key(&(textData->number), sizeof(textData->number));
 		Dbt dataDoc(textDocData, length);
 		Dbc * cursorp;		
 		targetDocs->cursor(NULL, &cursorp, 0);

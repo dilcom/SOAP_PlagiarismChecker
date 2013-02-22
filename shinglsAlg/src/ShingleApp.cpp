@@ -21,8 +21,8 @@ string ShingleApp::ipToStr(){
 	string res;
 	char str[16];
 	unsigned char * charIp = (unsigned char*)(&(this->ip));
-	_snprintf(str, 16, "%d.%d.%d.%d", charIp[3], charIp[2], charIp[1], charIp[0]);
-	res = str;
+	sprintf(str, "%3d.%3d.%3d.%3d", charIp[3], charIp[2], charIp[1], charIp[0]);
+	res.append(str);
 	return res;
 }
 
@@ -39,7 +39,7 @@ void ShingleApp::initTextById(unsigned int id, t__text * trgt){
 		trgt->type = header.type;
 		pointer += sizeof(DocHeader);
 
-		trgt->authorGroup = reinterpret_cast<char*>(soap_malloc(this, header.authorGroup_len + 1));
+        trgt->authorGroup = reinterpret_cast<char*>(soap_malloc(this, header.authorGroup_len + 1));
 		memcpy(trgt->authorGroup, pointer, header.authorGroup_len);
 		trgt->authorGroup[header.authorGroup_len] = '\0';
 		pointer += header.authorGroup_len;
@@ -69,7 +69,7 @@ void ShingleApp::initTextById(unsigned int id, t__text * trgt){
 	}
 	
 	if (LOG_EVERY_FCALL){
-		Log << "ShingleApp::initTextById execution took " << time + clock() << "msec\n";
+		Log << "ShingleApp::initTextById execution took " << (int)(time + clock()) << "msec\n";
 	}
 }
 
@@ -96,7 +96,7 @@ ShingleApp::ShingleApp(void)
 	}
 	catch (...){
 		///< TODO exception catching
-		Log << "Database opening error!" << '\n';
+		Log << "Database opening error!" << "\n";
 		//this->~ShingleApp();
 	}
 	Log.addLogFile("log.txt");
@@ -124,10 +124,10 @@ using namespace std;
 using namespace DePlaguarism;
 
 int ShingleApp::CompareText(t__text txt, t__result * res){
-	if (txtValid(txt))
-		switch (txt.type) {
-			case TEXT: 
-				return shingleAlgorithm(txt, res);
+    if (txtValid(txt))
+        switch (txt.type) {
+            case TEXT:
+                return shingleAlgorithm(txt, res);
 		}
 	return SOAP_ERR;
 }
@@ -158,7 +158,9 @@ void ShingleApp::findSimilar(t__text & txt){
 		}
 		unsigned int shCount = tested->getCount();
 		for (map<unsigned int, unsigned int>::iterator it = fResult.begin(); it != fResult.end(); it++){
-			appResult.push_back( *(new Pair(it->first, (float)(it->second)/shCount)) );
+            Pair * tmpPtr;
+            appResult.push_back( *(tmpPtr = new Pair(it->first, (float)(it->second)/shCount)) );
+            delete tmpPtr;
 		}
 		sort(appResult.begin(), appResult.end(), objectcomp);
 		if (appResult.empty() || appResult[0].similarity <= THRESHOLD_TO_SAVE) {
@@ -170,8 +172,9 @@ void ShingleApp::findSimilar(t__text & txt){
 		Log << "!!!ERROR in ShingleApp::findSimilar\n";
 	}
 	if (LOG_EVERY_FCALL){
-		Log << "ShingleApp::findSimilar execution took " << time + clock() << "msec\n";
+		Log << "ShingleApp::findSimilar execution took " << (int)(time + clock()) << "msec\n";
 	}
+
 	delete tested;
 }
 
@@ -179,18 +182,18 @@ int ShingleApp::shingleAlgorithm(t__text txt, t__result *res){
 	clock_t time = - clock();
 	Log << "Request from " << ipToStr() << " recieved\n";
 	findSimilar(txt);
-	int cnt = min(appResult.size(), DOCUMENTS_IN_RESPONCE);
-	res->errCode = cnt ? STATE_OK : STATE_NO_SIMILAR;
+    int cnt = min(appResult.size(), (size_t)DOCUMENTS_IN_RESPONSE);
+    res->errCode = cnt ? STATE_OK : STATE_NO_SIMILAR;
 	for (int j = 0; j < cnt; j += 1){
 		t__text * textElement = new t__text();
 		initTextById(appResult[j].docId, textElement);
 		textElement->similarity = appResult[j].similarity;
-		res->arrayOfTexts.push_back(*textElement);
-		delete textElement;
+        res->arrayOfTexts.push_back(*textElement);
+        delete textElement;
 	}
 	qCount += 1;
 	if (LOG_EVERY_FCALL){
-		Log << "Request num " << qCount << " processed in " << time+clock() << "msec\n";
+		Log << "Request num " << qCount << " processed in " << (int)(time + clock()) << "msec\n";
 		Log << "Text size: " << (int)(sizeof(char)*strlen(txt.streamData)) << " bytes\n\n";
 	}
 	if (qCount % 500 == 0){
