@@ -52,7 +52,7 @@ A commercial use license is available from Genivia, Inc., contact@genivia.com
 */
 
 #define GSOAP_VERSION 20810
-
+//#define DEBUG
 #ifdef WITH_SOAPDEFS_H
 # include "soapdefs.h"		/* include user-defined stuff */
 #endif

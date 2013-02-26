@@ -9,7 +9,6 @@ compiling, linking, and/or using OpenSSL is allowed.
 */
 
 #include "soapshingleService.h"
-
 shingleService::shingleService()
 {	shingleService_init(SOAP_IO_DEFAULT, SOAP_IO_DEFAULT);
 }
@@ -112,16 +111,7 @@ const SOAP_ENV__Header *shingleService::soap_header()
 }
 
 int shingleService::run(int port)
-{	if (soap_valid_socket(this->master) || soap_valid_socket(bind(NULL, port, 100)))
-	{	for (;;)
-		{	if (!soap_valid_socket(accept()) || serve())
-				return this->error;
-			soap_destroy(this);
-			soap_end(this);
-		}
-	}
-	else
-		return this->error;
+{
 	return SOAP_OK;
 }
 
@@ -229,6 +219,6 @@ static int serve_ns__CompareText(shingleService *soap)
 	return soap_closesock(soap);
 }
 int shingleService::CompareText(t__text text, result *res){
-	return SOAP_FAULT;
+    return SOAP_FAULT;
 }
 /* End of server object code */

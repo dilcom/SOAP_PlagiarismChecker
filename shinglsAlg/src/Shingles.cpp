@@ -43,7 +43,7 @@ Shingle::Shingle(const t__text & inText, int num)
     wstring txt = *ptrtxt;
 	wstrToLower(&txt);
 	wchar_t *buff = new wchar_t[txt.length() + 1]; 
-	int posTxt = 0,
+    size_t posTxt = 0,
 		posBuff = 0,
 		wordCount = 0,
 		curWordLength = 0,
@@ -79,7 +79,7 @@ Shingle::Shingle(const t__text & inText, int num)
     int * words = new int[wordCount + 10];
 	words[0] = 0;
 	int posWords = 1,
-		shingleCount = max(1, wordCount - WORDS_EACH_SHINGLE + 1);
+        shingleCount = max(1, (int)(wordCount - WORDS_EACH_SHINGLE + 1));
 	count = min(shingleCount, MAX_SHINGLE_PER_TEXT);
 	for (int i = 0; i < posBuff; i++){
 		if (buff[i] == ' ')
@@ -88,7 +88,7 @@ Shingle::Shingle(const t__text & inText, int num)
 	words[posWords] = posBuff;
 	unsigned int *crcs = new unsigned int[shingleCount];
 	for (int i = 0; i < shingleCount; i++){
-		crcs[i] = Crc32(reinterpret_cast<const unsigned char*>(buff + words[i]), (words[i + min(WORDS_EACH_SHINGLE, wordCount)] - words[i])*sizeof(wchar_t));
+        crcs[i] = Crc32(reinterpret_cast<const unsigned char*>(buff + words[i]), (words[i + min(WORDS_EACH_SHINGLE, (int)wordCount)] - words[i])*sizeof(wchar_t));
 	}
 	if (shingleCount > MAX_SHINGLE_PER_TEXT)
 		for (int i = 0; i < count; i++){
@@ -148,17 +148,23 @@ void Shingle::save(Db * targetDocs, Db * targetHash){
 
 	try{		
         Dbt key(&(textData->number), sizeof(textData->number));
-		Dbt dataDoc(textDocData, length);
+		Dbt dataDoc(textDocData, length);        
+        //key.set_flags(DB_DBT_REALLOC);
+        //dataDoc.set_flags(DB_DBT_REALLOC);
 		Dbc * cursorp;		
 		targetDocs->cursor(NULL, &cursorp, 0);
-		int ret = cursorp->put(&key, &dataDoc, DB_KEYFIRST);
+        cursorp->put(&key, &dataDoc, DB_KEYFIRST);
 		///< key in docs table is data in hashes table
 		targetHash->cursor(NULL, &cursorp, 0);
-		for (int i = 0; i < count; i++){
+        for (size_t i = 0; i < count; i++){
 			Dbt keyHash((void*)(data + i), sizeof(data[0]));
+            //keyHash.set_flags(DB_DBT_REALLOC);
 			cursorp->put(&keyHash, &key, DB_KEYFIRST);
+            //delete (char*)(keyHash.get_data()); <-error!
 		}
 		if (cursorp) cursorp->close();
+        //delete (char*)(key.get_data()); <-error!
+        //delete (char*)(dataDoc.get_data()); <-error!
 	}
 	catch(...){
 		//TODO exceptions processing

@@ -7,8 +7,36 @@
 #endif
 #include "../headers/ShingleApp.h"
 
-int http_get(struct soap *soap) 
-{ 
+using namespace DePlaguarism;
+using namespace std;
+
+int http_get(struct soap *soap);
+void * runService(void *);
+
+
+int main(int argc, char* argv[])
+{
+    pthread_t tid;
+    setlocale(LC_ALL, "ru_RU.UTF-8");
+    ShingleApp *srv = new ShingleApp();
+    soap_set_imode(srv, SOAP_C_UTFSTRING);
+    soap_set_omode(srv, SOAP_C_UTFSTRING);
+    pthread_create(&tid, NULL, (void*(*)(void*))runService, (void*)srv);
+    cout << "Application started!" << endl;
+    string a;
+    cin >> a;
+    while (a != "exit")
+        cin >> a;
+    srv->stop();
+    cout << "Application will be stopped then one more connection is accepted..." << endl;
+    pthread_join(tid, NULL);
+    delete srv;
+    system("pause");
+    return 0;
+}
+
+int http_get(struct soap *soap)
+{
    FILE *fd = NULL;
    char *s = strchr(soap->path, '?');
    if (!s || strcmp(s, "?wsdl"))
@@ -32,21 +60,12 @@ int http_get(struct soap *soap)
 }
 
 
-int main(int argc, char* argv[])
-{
-	const int SERVICE_PORT = 9999;
-	setlocale(LC_ALL, "ru_RU.UTF-8");
-	std::auto_ptr<ShingleApp> srv (new ShingleApp());
-	soap_set_imode(srv, SOAP_C_UTFSTRING);
-	soap_set_omode(srv, SOAP_C_UTFSTRING);
+void * runService(void * app){
+    ShingleApp * srv = (ShingleApp*)app;
     srv->fget = http_get;
-    //ShingleApp *arr = new ShingleApp();
-    //arr->CompareText()
     srv->log() << "Server putted up!\n" << srv->nowToStr() << '\n';
-	while (srv->run(SERVICE_PORT)){
-		srv->log() << "Warning! Server is down \n" << "Server putted up!\n" << srv->nowToStr() << '\n';
-	};
-	system("pause");
-    return 0;
+    srv->setMain();
+    while (srv->run(SERVICE_PORT)){
+        srv->log() << "Warning! Server is down \n" << "Server putted up!\n" << srv->nowToStr() << '\n';
+    };
 }
-

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../include/utf8.h"
-#include "constants.h"
 #include "staffClasses.h"
+#include "constants.h"
 
 #ifdef __WIN32__
     #include "../include/Win32/db_cxx.h"

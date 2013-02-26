@@ -2,6 +2,10 @@
 
 
 namespace DePlaguarism{
+    const int SERVICE_PORT = 9999; // port used for soap server
+    #define BACKLOG (100)	// Max. request backlog
+    #define MAX_THR (1) // Size of thread pool
+    #define MAX_QUEUE (1000) // Max. size of request queue
 	//Shingle.h
 	const int MAX_SHINGLE_PER_TEXT = 120; // max Shingles in text (if more then 120 minimal)
 	const int WORDS_EACH_SHINGLE = 4; // words in each Shingle
@@ -16,7 +20,7 @@ namespace DePlaguarism{
 	const char ENV_NAME[] = "./db";
 	
 	//logger mode const
-	const bool LOG_EVERY_FCALL = true;
+    const bool LOG_EVERY_FCALL = false;
 }
 //mode constants
 //#define MODE_DO_NOT_SAVE_RESULTS // database file will not be saved
