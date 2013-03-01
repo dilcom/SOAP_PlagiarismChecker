@@ -4,7 +4,7 @@
 #include "staffClasses.h"
 #include "constants.h"
 
-#ifdef __WIN32__
+#ifdef _WIN32
     #include "../include/Win32/db_cxx.h"
 #else
     #include "../include/UNIX/db_cxx.h"

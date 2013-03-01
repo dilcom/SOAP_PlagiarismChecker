@@ -151,7 +151,7 @@ A commercial use license is available from Genivia, Inc., contact@genivia.com
 #endif
 
 #ifdef __BORLANDC__
-# ifdef __WIN32__
+# ifdef _WIN32
 #  ifndef WIN32
 #   define WIN32
 #  endif

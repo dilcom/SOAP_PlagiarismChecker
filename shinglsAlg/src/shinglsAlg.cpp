@@ -16,12 +16,12 @@ void * runService(void *);
 
 int main(int argc, char* argv[])
 {
-    pthread_t tid;
+    THREAD_TYPE tid;
     setlocale(LC_ALL, "ru_RU.UTF-8");
     ShingleApp *srv = new ShingleApp();
     soap_set_imode(srv, SOAP_C_UTFSTRING);
     soap_set_omode(srv, SOAP_C_UTFSTRING);
-    pthread_create(&tid, NULL, (void*(*)(void*))runService, (void*)srv);
+    THREAD_CREATE(&tid, (void(*)(void*))runService, (void*)srv);
     cout << "Application started!" << endl;
     string a;
     cin >> a;
@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
         cin >> a;
     srv->stop();
     cout << "Application will be stopped then one more connection is accepted..." << endl;
-    pthread_join(tid, NULL);
+    THREAD_JOIN(tid);
     delete srv;
     system("pause");
     return 0;
@@ -68,4 +68,5 @@ void * runService(void * app){
     while (srv->run(SERVICE_PORT)){
         srv->log() << "Warning! Server is down \n" << "Server putted up!\n" << srv->nowToStr() << '\n';
     };
+	return NULL;
 }

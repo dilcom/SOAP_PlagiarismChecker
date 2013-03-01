@@ -82,6 +82,7 @@ void ShingleApp::setMain(){
 }
 
 void ShingleApp::setChild(){
+	documentCount = 0;
     mainEx = false;
 }
 
@@ -96,7 +97,6 @@ ShingleApp::ShingleApp(void)
 		documentCount = 0;
 	f.close();
     Log->addTrgt(&cout);
-	qCount = 0;
     try{
 		env = new DbEnv(0);	
         env->open(ENV_NAME, DB_CREATE | DB_INIT_MPOOL | DB_THREAD, 0);
@@ -124,9 +124,6 @@ ShingleApp::~ShingleApp(void)
         hashes->close(0);
         docs->close(0);
         env->close(0);
-        delete hashes;
-        delete docs;
-        delete env;
         delete Log;
     }
 }
@@ -210,16 +207,9 @@ int ShingleApp::shingleAlgorithm(t__text txt, t__result *res){
         res->arrayOfTexts.push_back(*textElement);
         delete textElement;
 	}
-	qCount += 1;
 	if (LOG_EVERY_FCALL){
-        *Log << "Request num " << qCount << " processed in " << (int)(time + clock()) << "msec\n";
+        *Log << "Request processed in " << (int)(time + clock()) << "msec\n";
         *Log << "Text size: " << (int)(sizeof(char)*strlen(txt.streamData)) << " bytes\n\n";
-	}
-	if (qCount % 500 == 0){
-		ofstream f;
-		f.open("docNumber.t");
-		f.write((char*)(&documentCount), sizeof(documentCount));
-		f.close();
 	}
 	return SOAP_OK;
 }
@@ -241,34 +231,31 @@ void ShingleApp::stop(){
 }
 
 
-
-
-SOAP_SOCKET queue[MAX_QUEUE]; // The global request queue of sockets
+SOAP_SOCKET queue[MAX_QUEUE]; ///< The global request queue of sockets
 int head = 0, tail = 0; // Queue head and tail
-void *process_queue(void*);
-int enqueue(SOAP_SOCKET);
-SOAP_SOCKET dequeue();
-pthread_mutex_t queue_cs;
-pthread_cond_t queue_cv;
+MUTEX_TYPE queue_cs;
+COND_TYPE queue_cv;
+
+
 
 int ShingleApp::run(int port){
     flagContinue = true;
     ShingleApp *soap_thr[MAX_THR]; // each thread needs a runtime context
-    pthread_t tid[MAX_THR];
+    THREAD_TYPE tid[MAX_THR];
     SOAP_SOCKET m, s;
     int i;
     m = this->bind(NULL, port, BACKLOG);
     if (!soap_valid_socket(m))
         exit(1);
     fprintf(stderr, "Socket connection successful %d\n", m);
-    pthread_mutex_init(&queue_cs, NULL);
-    pthread_cond_init(&queue_cv, NULL);
+    MUTEX_SETUP(queue_cs);
+    COND_SETUP(queue_cv);
     for (i = 0; i < MAX_THR; i++)
     {
         soap_thr[i] = new ShingleApp(*this);
         soap_thr[i]->setChild();
         fprintf(stderr, "Starting thread %d\n", i);
-        pthread_create(&tid[i], NULL, (void*(*)(void*))process_queue, (void*)soap_thr[i]);
+        THREAD_CREATE(&tid[i], (void(*)(void*))process_queue, (void*)soap_thr[i]);
     }
     for (;;)
     {
@@ -290,26 +277,28 @@ int ShingleApp::run(int port){
         }
         fprintf(stderr, "Thread %d accepts socket %d connection from IP %d.%d.%d.%d\n", i, s, (this->ip >> 24)&0xFF, (this->ip >> 16)&0xFF, (this->ip >> 8)&0xFF, this->ip&0xFF);
         while (enqueue(s) == SOAP_EOM)
-            sleep(1);
+            Sleep(1);
     }
     for (i = 0; i < MAX_THR; i++)
     {
         while (enqueue(SOAP_INVALID_SOCKET) == SOAP_EOM)
-            sleep(1);
+            Sleep(1);
     }
     for (i = 0; i < MAX_THR; i++)
     {
         fprintf(stderr, "Waiting for thread %d to terminate... ", i);
-        pthread_join(tid[i], NULL);
+        THREAD_JOIN(tid[i]);
         fprintf(stderr, "terminated\n");
+		documentCount += soap_thr[i]->documentCount;
+		delete soap_thr[i];
     }
-    pthread_mutex_destroy(&queue_cs);
-    pthread_cond_destroy(&queue_cv);
+    MUTEX_CLEANUP(queue_cs);
+    COND_CLEANUP(queue_cv);
     soap_done(this);
     return 0;
  }
 
-void *process_queue(void *soap)
+void *DePlaguarism::process_queue(void *soap)
 {
    ShingleApp *tsoap = static_cast<ShingleApp*>(soap);
    for (;;)
@@ -321,15 +310,14 @@ void *process_queue(void *soap)
       fprintf(stderr, "served\n");
    }
    tsoap->destroy();
-   delete tsoap;
    return SOAP_OK;
 }
 
-int enqueue(SOAP_SOCKET sock)
+int DePlaguarism::enqueue(SOAP_SOCKET sock)
 {
    int status = SOAP_OK;
    int next;
-   pthread_mutex_lock(&queue_cs);
+   MUTEX_LOCK(queue_cs);
    next = tail + 1;
    if (next >= MAX_QUEUE)
       next = 0;
@@ -340,20 +328,20 @@ int enqueue(SOAP_SOCKET sock)
       queue[tail] = sock;
       tail = next;
    }
-   pthread_cond_signal(&queue_cv);
-   pthread_mutex_unlock(&queue_cs);
+   COND_SIGNAL(queue_cv);
+   MUTEX_UNLOCK(queue_cs);
    return status;
 }
 
-SOAP_SOCKET dequeue()
+SOAP_SOCKET DePlaguarism::dequeue()
 {
    SOAP_SOCKET sock;
-   MUTEX_LOCK(&queue_cs);
+   MUTEX_LOCK(queue_cs);
    while (head == tail)
-       COND_WAIT(&queue_cv, &queue_cs);
+       COND_WAIT(queue_cv, queue_cs);
    sock = queue[head++];
    if (head >= MAX_QUEUE)
       head = 0;
-   MUTEX_UNLOCK(&queue_cs);
+   MUTEX_UNLOCK(queue_cs);
    return sock;
 }
