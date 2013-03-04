@@ -7,6 +7,11 @@
 #endif
 #include "../headers/ShingleApp.h"
 
+const string exitCommand = "exit";
+const string statCommand = "stat";
+const string compactCommand = "compact";
+const string resetDBcommand = "reset";
+
 using namespace DePlaguarism;
 using namespace std;
 
@@ -25,12 +30,20 @@ int main(int argc, char* argv[])
     cout << "Application started!" << endl;
     string a;
     cin >> a;
-    while (a != "exit")
+    while (a != exitCommand){
+        if (a == statCommand)
+            srv->stat();
+        if (a == compactCommand)
+            srv->compactDB();
+        if (a == resetDBcommand)
+            srv->resetDB();
         cin >> a;
+    }
     srv->stop();
     cout << "Application will be stopped then one more connection is accepted..." << endl;
     THREAD_JOIN(tid);
     delete srv;
+    cin >> a;
     system("pause");
     return 0;
 }

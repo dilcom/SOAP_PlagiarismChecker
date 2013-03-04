@@ -10,9 +10,9 @@ using namespace std;
 main class. It provides receiving massages and its processing
 */
 namespace DePlaguarism{		
-	void *process_queue(void*);
-	int enqueue(SOAP_SOCKET);
-	SOAP_SOCKET dequeue();
+    void *process_queue(void*);///<
+    int enqueue(SOAP_SOCKET);///< add socket to multithreading queue
+    SOAP_SOCKET dequeue();///< pops socket from queue
 
 	struct Pair{
 		unsigned int docId;
@@ -33,11 +33,9 @@ namespace DePlaguarism{
 		public shingleService
 	{
 	protected:
-		void initTextById(unsigned int id, t__text * trgt);
-		ClassComp objectcomp;
-		DbEnv * env; ///< database in BDB
-		Db * hashes, ///< bdb table, contains pairs hash => doc_id
-			* docs;	///< bdb table, contains pairs doc_id => documentInfo
+        void initTextById(unsigned int id, t__text * trgt);///< creates new text item from DB, trgt is where it will be
+        ClassComp objectcomp;
+        db_mutex_t *mutexDB;
 		vector<Pair> appResult;
         void findSimilar(t__text & txt);  ///< function compares new text with others already in the base
         ShingleAppLogger * Log;  ///< logger object. Sends messages in several streams
@@ -45,7 +43,15 @@ namespace DePlaguarism{
         long long documentCount;///< count of document already stored in base
         bool flagContinue;///< setting to false will make application to stop (only after accepting one more connection)
         bool mainEx;///< setting to true will make instance to close DB handlers and free memory allocated for them
+        static DbEnv * env; ///< database in BDB
+        static Db * hashes, ///< bdb table, contains pairs hash => doc_id
+                  * docs;	///< bdb table, contains pairs doc_id => documentInfo
     public:
+        void stat();///< prints statistics about Berkeley DB
+        void compactDB();///< try to minimize memory pool of application
+        void resetDB();///< closes and loads DB
+        void loadDB();///< initializes DB handlers
+        void closeDB();///< sloses all DB handlers
         void stop();///< sets flagContinue to false, stops the application then it accepts one more connection
         void setMain();///< sets mainEx to true, allows application to close DB handlers and free memory allocated for them
         void setChild();///< sets mainEx to false & inits documentCount with 0

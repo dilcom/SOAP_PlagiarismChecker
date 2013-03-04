@@ -101,7 +101,7 @@ The threads.h and threads.c code define the following portable API:
 #if defined(WIN32)
 # define THREAD_TYPE		HANDLE
 # define THREAD_ID		GetCurrentThreadId()
-# define THREAD_CREATE(x,y,z)	*(x) = (HANDLE)_beginthread((y), 8*4096, (z))
+# define THREAD_CREATE(x,y,z)	*(x) = (HANDLE)_beginthread((void(*)(void*))(y), 8*4096, (z))
 # define THREAD_DETACH(x)	
 # define THREAD_JOIN(x)		WaitForSingleObject((x), INFINITE)
 # define THREAD_EXIT		_endthread()
@@ -116,6 +116,7 @@ The threads.h and threads.c code define the following portable API:
 # define COND_CLEANUP(x)	emulate_pthread_cond_destroy(&(x))
 # define COND_SIGNAL(x)		emulate_pthread_cond_signal(&(x))
 # define COND_WAIT(x,y)		emulate_pthread_cond_wait(&(x), &(y))
+# define SLEEP(x) Sleep(x)
 typedef struct
 { UINT waiters_count_;
   CRITICAL_SECTION waiters_count_lock_;
@@ -135,7 +136,7 @@ int emulate_pthread_cond_wait(COND_TYPE*, MUTEX_TYPE*);
 #elif defined(_POSIX_THREADS) || defined(_SC_THREADS)
 # define THREAD_TYPE		pthread_t
 # define THREAD_ID		pthread_self()
-# define THREAD_CREATE(x,y,z)	pthread_create((x), NULL, (y), (z))
+# define THREAD_CREATE(x,y,z)	pthread_create((x), NULL, (void*(*)(void*))(y), (z))
 # define THREAD_DETACH(x)	pthread_detach((x))
 # define THREAD_JOIN(x)		pthread_join((x), NULL)
 # define THREAD_EXIT		pthread_exit(NULL)
@@ -144,6 +145,7 @@ int emulate_pthread_cond_wait(COND_TYPE*, MUTEX_TYPE*);
 # define MUTEX_INITIALIZER	PTHREAD_MUTEX_INITIALIZER
 # define MUTEX_SETUP(x)		pthread_mutex_init(&(x), NULL)
 # define MUTEX_CLEANUP(x)	pthread_mutex_destroy(&(x))
+# define SLEEP(x) sleep(x)
 #if 0 /* 1: DEBUG MUTEX */
 # define MUTEX_LOCK(x)		(fprintf(stderr, "! LOCK   %p %s:%d\n", &x, __FILE__, __LINE__), pthread_mutex_lock(&(x)))
 # define MUTEX_UNLOCK(x)	(fprintf(stderr, "! UNLOCK %p %s:%d\n", &x, __FILE__, __LINE__), pthread_mutex_unlock(&(x)))

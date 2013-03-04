@@ -27,7 +27,7 @@ void wstrToLower(wstring * ws){
 }
 
 inline bool isAlph(wchar_t a){
-	return (a >= L'A' && a <= L'Z') || (a >= L'a' && a <= L'z') || (a >= L'Рђ' && a <= L'РЇ') || (a >= L'Р°' && a <= L'СЏ');
+    return (a >= L'A' && a <= L'Z') || (a >= L'a' && a <= L'z') || (a >= L'А' && a <= L'Я') || (a >= L'а' && a <= L'я');
 }
 
 Shingle::Shingle(void)
@@ -151,20 +151,24 @@ void Shingle::save(Db * targetDocs, Db * targetHash){
 		Dbt dataDoc(textDocData, length);        
         //key.set_flags(DB_DBT_REALLOC);
         //dataDoc.set_flags(DB_DBT_REALLOC);
-		Dbc * cursorp;		
-		targetDocs->cursor(NULL, &cursorp, 0);
+        Dbc * cursorp, *cursorq;
+        targetDocs->cursor(NULL, &cursorp, DB_WRITECURSOR);
         cursorp->put(&key, &dataDoc, DB_KEYFIRST);
 		///< key in docs table is data in hashes table
-		targetHash->cursor(NULL, &cursorp, 0);
+        //env->mutex_lock(dbmutex);
+        cursorp->close();
+        targetHash->cursor(NULL, &cursorq, DB_WRITECURSOR);
+        Dbt keyHash((void*)(data), sizeof(data[0]));
+        //keyHash.set_flags(DB_DBT_REALLOC);
         for (size_t i = 0; i < count; i++){
-			Dbt keyHash((void*)(data + i), sizeof(data[0]));
-            //keyHash.set_flags(DB_DBT_REALLOC);
-			cursorp->put(&keyHash, &key, DB_KEYFIRST);
-            //delete (char*)(keyHash.get_data()); <-error!
+            keyHash.set_data((void*)(data + i));
+            cursorq->put(&keyHash, &key, DB_KEYFIRST);
 		}
-		if (cursorp) cursorp->close();
-        //delete (char*)(key.get_data()); <-error!
-        //delete (char*)(dataDoc.get_data()); <-error!
+        //free(keyHash.get_data());
+        cursorq->close();
+        //env->mutex_unlock(dbmutex);
+        //free(key.get_data());
+        //free(dataDoc.get_data());
 	}
 	catch(...){
 		//TODO exceptions processing

@@ -6,7 +6,9 @@ bool DePlaguarism::txtValid(t__text a){
 	return (a.streamData && a.authorGroup && a.authorName && a.name);
 }
 
-
+DbEnv * ShingleApp::env; ///< database in BDB
+Db * ShingleApp::hashes; ///< bdb table, contains pairs hash => doc_id
+Db * ShingleApp::docs;	///< bdb table, contains pairs doc_id => documentInfo
 
 string ShingleApp::nowToStr(){
 	string res;
@@ -28,12 +30,12 @@ string ShingleApp::ipToStr(){
 void ShingleApp::initTextById(unsigned int id, t__text * trgt){
 	clock_t time = - clock();
 	try{
-		Dbc *cursorp;
-		docs->cursor(NULL, &cursorp, 0);
+        Dbc *cursorp;
         Dbt key(&id, sizeof(id) );
         Dbt dataItem(0, 0);
         //key.set_flags(DB_DBT_REALLOC);
         //dataItem.set_flags(DB_DBT_REALLOC);
+        docs->cursor(NULL, &cursorp, 0);        
         cursorp->get(&key, &dataItem, DB_SET);
 		char * pointer = (char *)(dataItem.get_data());
 		DocHeader header = *(DocHeader *) pointer;
@@ -62,9 +64,10 @@ void ShingleApp::initTextById(unsigned int id, t__text * trgt){
 
 		char * date = asctime(&(header.dateTime));
 		trgt->date = reinterpret_cast<char*>(soap_malloc(this, strlen(date) + 1));
-		strcpy(trgt->date, date);
-        //delete (char*)(dataItem.get_data()); <-error!
-        //delete (char*)(key.get_data()); <-error!
+        strcpy(trgt->date, date);
+        cursorp->close();
+        //free(dataItem.get_data());
+        //free(key.get_data());
 	}
 	catch(...){
         *Log << "!!!ERROR in ShingleApp::initTextById \n";
@@ -97,20 +100,7 @@ ShingleApp::ShingleApp(void)
 		documentCount = 0;
 	f.close();
     Log->addTrgt(&cout);
-    try{
-		env = new DbEnv(0);	
-        env->open(ENV_NAME, DB_CREATE | DB_INIT_MPOOL | DB_THREAD, 0);
-		hashes = new Db(env, 0);
-		docs = new Db(env, 0);
-		hashes->set_flags(DB_DUP);
-        hashes->open(0, HASH_DB_NAME, NULL, DB_HASH, DB_CREATE | DB_THREAD, 0644);
-        docs->open(0, DOCS_DB_NAME, NULL, DB_BTREE, DB_CREATE | DB_THREAD, 0644);
-	}
-	catch (...){
-		///< TODO exception catching
-        *Log << "Database opening error!" << "\n";
-		//this->~ShingleApp();
-	}
+    loadDB();
     Log->addLogFile("log.txt");
 }
 
@@ -121,10 +111,8 @@ ShingleApp::~ShingleApp(void)
         f.open("docNumber.t");
         f.write((char*)(&documentCount), sizeof(documentCount));
         f.close();
-        hashes->close(0);
-        docs->close(0);
-        env->close(0);
         delete Log;
+        closeDB();
     }
 }
 
@@ -151,10 +139,13 @@ void ShingleApp::findSimilar(t__text & txt){
 	Shingle * tested = new Shingle(txt, documentCount);
 	Dbc *cursorp;
 	appResult.clear();
-	try{
-		hashes->cursor(NULL, &cursorp, 0);
+    try{
 		unsigned int cnt = tested->getCount();
 		unsigned int currentDocId;
+        //env->mutex_lock(*mutexDB);
+        //*Log << "!!!";
+        hashes->cursor(NULL, &cursorp,  0);
+        //*Log << "!!!";
 		for (unsigned int i = 0; i < cnt; i++){
 			Dbt key((void*)(tested->getData() + i), sizeof(unsigned int));
             Dbt data(&currentDocId, sizeof(currentDocId));
@@ -169,9 +160,11 @@ void ShingleApp::findSimilar(t__text & txt){
 				else fResult[dt] = 1;
 				ret = cursorp->get(&key, &data, DB_NEXT_DUP);
             }
-            //delete (char*)(data.get_data()); <-error!
-            //delete (char*)(key.get_data()); <-error!
-		}
+            //free(data.get_data());
+            //free(key.get_data());
+        }
+        cursorp->close();
+        //env->mutex_unlock(*mutexDB);
 		unsigned int shCount = tested->getCount();
 		for (map<unsigned int, unsigned int>::iterator it = fResult.begin(); it != fResult.end(); it++){
             Pair * tmpPtr;
@@ -179,8 +172,8 @@ void ShingleApp::findSimilar(t__text & txt){
             delete tmpPtr;
 		}
 		sort(appResult.begin(), appResult.end(), objectcomp);
-		if (appResult.empty() || appResult[0].similarity <= THRESHOLD_TO_SAVE) {
-			tested->save(docs, hashes);
+        if (appResult.empty() || appResult[0].similarity <= THRESHOLD_TO_SAVE) {
+            tested->save(docs, hashes);
 			documentCount += 1;
 		}	
 	}
@@ -255,7 +248,7 @@ int ShingleApp::run(int port){
         soap_thr[i] = new ShingleApp(*this);
         soap_thr[i]->setChild();
         fprintf(stderr, "Starting thread %d\n", i);
-        THREAD_CREATE(&tid[i], (void(*)(void*))process_queue, (void*)soap_thr[i]);
+        THREAD_CREATE(&tid[i], process_queue, (void*)soap_thr[i]);
     }
     for (;;)
     {
@@ -277,12 +270,12 @@ int ShingleApp::run(int port){
         }
         fprintf(stderr, "Thread %d accepts socket %d connection from IP %d.%d.%d.%d\n", i, s, (this->ip >> 24)&0xFF, (this->ip >> 16)&0xFF, (this->ip >> 8)&0xFF, this->ip&0xFF);
         while (enqueue(s) == SOAP_EOM)
-            Sleep(1);
+            SLEEP(1);
     }
     for (i = 0; i < MAX_THR; i++)
     {
         while (enqueue(SOAP_INVALID_SOCKET) == SOAP_EOM)
-            Sleep(1);
+            SLEEP(1);
     }
     for (i = 0; i < MAX_THR; i++)
     {
@@ -344,4 +337,49 @@ SOAP_SOCKET DePlaguarism::dequeue()
       head = 0;
    MUTEX_UNLOCK(queue_cs);
    return sock;
+}
+
+void ShingleApp::stat(){
+    env->stat_print(0);
+}
+
+void ShingleApp::compactDB(){
+    log() << "DB compact operation begin\n";
+    DbTxn * envTXN;
+    env->cdsgroup_begin(&envTXN);
+    docs->compact(envTXN, NULL, NULL, NULL, DB_FREE_SPACE, NULL);
+    hashes->compact(envTXN, NULL, NULL, NULL, DB_FREE_SPACE, NULL);
+    log() << "DB compact operation end\n";
+}
+
+void ShingleApp::loadDB(){
+    try{
+        env = new DbEnv(0);
+        //env->set_flags(DB_CDB_ALLDB, 1);
+        env->open(ENV_NAME, DB_CREATE | DB_INIT_CDB | DB_INIT_MPOOL | DB_THREAD, 0);
+        hashes = new Db(env, 0);
+        docs = new Db(env, 0);
+        hashes->set_flags(DB_DUP);
+        hashes->open(0, HASH_DB_NAME, NULL, DB_HASH, DB_CREATE | DB_THREAD, 0644);
+        docs->open(0, DOCS_DB_NAME, NULL, DB_BTREE, DB_CREATE | DB_THREAD, 0644);
+    }
+    catch (...){
+        ///< TODO exception catching
+        *Log << "Database opening error!\n";
+    }
+}
+
+void ShingleApp::closeDB(){
+    hashes->close(0);
+    docs->close(0);
+    env->close(0);
+    delete hashes;
+    delete docs;
+    delete env;
+}
+
+void ShingleApp::resetDB(){
+    *Log << "ResetDB invoked!\n";
+    closeDB();
+    loadDB();
 }
