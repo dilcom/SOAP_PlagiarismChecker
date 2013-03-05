@@ -101,7 +101,7 @@ The threads.h and threads.c code define the following portable API:
 #if defined(WIN32)
 # define THREAD_TYPE		HANDLE
 # define THREAD_ID		GetCurrentThreadId()
-# define THREAD_CREATE(x,y,z)	*(x) = (HANDLE)_beginthread((void(*)(void*))(y), 8*4096, (z))
+# define THREAD_CREATE(x,y,z,n) *(x) = (HANDLE)_beginthreadex(NULL, 8*4096, &(y), (z), 0, &threadID)
 # define THREAD_DETACH(x)	
 # define THREAD_JOIN(x)		WaitForSingleObject((x), INFINITE)
 # define THREAD_EXIT		_endthread()
@@ -136,7 +136,7 @@ int emulate_pthread_cond_wait(COND_TYPE*, MUTEX_TYPE*);
 #elif defined(_POSIX_THREADS) || defined(_SC_THREADS)
 # define THREAD_TYPE		pthread_t
 # define THREAD_ID		pthread_self()
-# define THREAD_CREATE(x,y,z)	pthread_create((x), NULL, (void*(*)(void*))(y), (z))
+# define THREAD_CREATE(x,y,z,n)	pthread_create((x), NULL, (void*(*)(void*))(y), (z))
 # define THREAD_DETACH(x)	pthread_detach((x))
 # define THREAD_JOIN(x)		pthread_join((x), NULL)
 # define THREAD_EXIT		pthread_exit(NULL)

@@ -190,7 +190,7 @@ static int serve_ns__CompareText(shingleService *soap)
 	 || soap_envelope_end_in(soap)
 	 || soap_end_recv(soap))
 		return soap->error;
-	soap->error = soap->CompareText(soap_tmp_ns__CompareText.text, soap_tmp_ns__CompareTextResponse.res);
+	soap->error = soap->CompareText(&(soap_tmp_ns__CompareText.text), soap_tmp_ns__CompareTextResponse.res);
 	if (soap->error)
 		return soap->error;
 	soap_serializeheader(soap);
@@ -218,7 +218,7 @@ static int serve_ns__CompareText(shingleService *soap)
 		return soap->error;
 	return soap_closesock(soap);
 }
-int shingleService::CompareText(t__text text, result *res){
+int shingleService::CompareText(t__text * text, result *res){
     return SOAP_FAULT;
 }
 /* End of server object code */

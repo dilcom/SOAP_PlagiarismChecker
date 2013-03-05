@@ -1,4 +1,4 @@
-#include "../headers/stdafx.h"
+﻿#include "../headers/stdafx.h"
 #include "../headers/Shingles.h"
 #pragma comment (lib, "../lib/libdb53.lib")
  
@@ -34,12 +34,12 @@ Shingle::Shingle(void)
 {
 }
 
-Shingle::Shingle(const t__text & inText, int num)
+Shingle::Shingle(t__text * inText, int num)
 {
 	//canonization
-    textData = new TextDocument(inText, num);
+    textData = new TextDocument(*inText, num);
 	
-    wstring *ptrtxt = utf8to16 (inText.streamData);
+    wstring *ptrtxt = utf8to16 (inText->streamData);
     wstring txt = *ptrtxt;
 	wstrToLower(&txt);
 	wchar_t *buff = new wchar_t[txt.length() + 1]; 
@@ -130,9 +130,10 @@ const TextDocument & Shingle::getText(){
 }
 
 
-void Shingle::save(Db * targetDocs, Db * targetHash){
+void Shingle::save(Db * targetDocs, Db * targetHash, int docNumber){
     int length = sizeof(textData->header) + textData->authorGroup.length() + textData->authorName.length() + textData->data.length()
         + textData->name.length();
+	textData->number = docNumber;
     char * textDocData = new char[length];
     char * pointer = textDocData;
     memcpy(pointer, &(textData->header), sizeof(DocHeader));

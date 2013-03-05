@@ -78,6 +78,6 @@ class SOAP_CMAC shingleService : public soap
 	///
 
 	/// Web service operation 'CompareText' (returns error code or SOAP_OK)
-	virtual	int CompareText(t__text text, result *res) SOAP_PURE_VIRTUAL;
+	virtual	int CompareText(t__text * text, result *res) SOAP_PURE_VIRTUAL;
 };
 #endif

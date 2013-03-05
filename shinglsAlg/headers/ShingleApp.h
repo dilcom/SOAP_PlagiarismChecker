@@ -10,7 +10,11 @@ using namespace std;
 main class. It provides receiving massages and its processing
 */
 namespace DePlaguarism{		
-    void *process_queue(void*);///<
+#ifdef WIN32
+	unsigned _stdcall process_queue(void *soap);///< win32 variant
+#else
+	void *process_queue(void *soap);///< variant for posix createThread
+#endif
     int enqueue(SOAP_SOCKET);///< add socket to multithreading queue
     SOAP_SOCKET dequeue();///< pops socket from queue
 
@@ -33,20 +37,20 @@ namespace DePlaguarism{
 		public shingleService
 	{
 	protected:
-        void initTextById(unsigned int id, t__text * trgt);///< creates new text item from DB, trgt is where it will be
+        void initTextById(int id, t__text * trgt);///< creates new text item from DB, trgt is where it will be
         ClassComp objectcomp;
-        db_mutex_t *mutexDB;
 		vector<Pair> appResult;
-        void findSimilar(t__text & txt);  ///< function compares new text with others already in the base
+        void findSimilar(t__text * txt);  ///< function compares new text with others already in the base
         ShingleAppLogger * Log;  ///< logger object. Sends messages in several streams
-		int shingleAlgorithm(t__text txt, t__result *res); ///< compare two texts using algorithm based on shingles
-        long long documentCount;///< count of document already stored in base
+		int shingleAlgorithm(t__text * txt, t__result *res); ///< compare two texts using algorithm based on shingles
         bool flagContinue;///< setting to false will make application to stop (only after accepting one more connection)
         bool mainEx;///< setting to true will make instance to close DB handlers and free memory allocated for them
+        static int documentCount;///< count of document already stored in base
         static DbEnv * env; ///< database in BDB
         static Db * hashes, ///< bdb table, contains pairs hash => doc_id
                   * docs;	///< bdb table, contains pairs doc_id => documentInfo
     public:
+		static MUTEX_TYPE mtx;///< crossplatform mutex
         void stat();///< prints statistics about Berkeley DB
         void compactDB();///< try to minimize memory pool of application
         void resetDB();///< closes and loads DB
@@ -61,9 +65,9 @@ namespace DePlaguarism{
         ShingleAppLogger & log();///< getter for Log field
         ShingleApp();
 		~ShingleApp();
-        virtual	int CompareText(t__text txt, t__result *res);///< main method which process incoming request
+        virtual	int CompareText(t__text * txt, t__result *res);///< main method which process incoming request
 	};
 
-	bool txtValid(t__text a);
+	bool txtValid(t__text * a);
 
 }

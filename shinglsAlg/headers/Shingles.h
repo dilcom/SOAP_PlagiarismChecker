@@ -25,9 +25,9 @@ namespace DePlaguarism{
 		unsigned int getCount(); ///< getter for count field
 		const TextDocument & getText(); ///< getter for text field
 		Shingle();
-		Shingle(const t__text & txt, int num); ///< contructs object from UTF-8 text data
+		Shingle(t__text * txt, int num); ///< contructs object from UTF-8 text data
 		~Shingle();
-        void save(Db * targetDocs, Db * targetHash); ///< saves all the data to DB
+        void save(Db * targetDocs, Db * targetHash, int docNumber); ///< saves all the data to DB
 	};
 
 	uint_least32_t Crc32(const unsigned char * buf, size_t len); ///< crc32 hash function

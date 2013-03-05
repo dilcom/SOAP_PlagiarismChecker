@@ -76,7 +76,7 @@ public:
 	virtual void *soap_get(struct soap*, const char*, const char*);
 	virtual void *soap_in(struct soap*, const char*, const char*);
 	         t__text() { t__text::soap_default(NULL); }
-	virtual ~t__text() { }
+	virtual ~t__text() { delete name; delete date; delete streamData; delete authorName; delete authorGroup; }
 };
 #endif
 

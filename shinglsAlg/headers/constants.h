@@ -20,7 +20,7 @@ namespace DePlaguarism{
 	const char ENV_NAME[] = "./db";
 	
 	//logger mode const
-    const bool LOG_EVERY_FCALL = false;
+    const bool LOG_EVERY_FCALL = true;
 }
 //mode constants
 //#define MODE_DO_NOT_SAVE_RESULTS // database file will not be saved
