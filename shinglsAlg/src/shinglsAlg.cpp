@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     ShingleApp *srv = new ShingleApp();
     soap_set_imode(srv, SOAP_C_UTFSTRING);
     soap_set_omode(srv, SOAP_C_UTFSTRING);
-	unsigned threadID;
+    unsigned threadID;
     THREAD_CREATE(&tid, runService, (void*)srv, threadID);
     cout << "Application started!" << endl;
     string a;

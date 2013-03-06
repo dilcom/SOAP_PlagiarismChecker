@@ -67,6 +67,7 @@ public:
 	char *authorGroup;	/* optional element of type xsd:string */
 	enum t__type type;	/* required element of type t:type */
 	float similarity;	/* required element of type xsd:float */
+    struct soap* creator; /* soap instance initialized that object*/
 public:
 	virtual int soap_type() const { return 14; } /* = unique id SOAP_TYPE_t__text */
 	virtual void soap_default(struct soap*);
@@ -75,8 +76,14 @@ public:
 	virtual int soap_out(struct soap*, const char*, int, const char*) const;
 	virtual void *soap_get(struct soap*, const char*, const char*);
 	virtual void *soap_in(struct soap*, const char*, const char*);
-	         t__text() { t__text::soap_default(NULL); }
-	virtual ~t__text() { delete name; delete date; delete streamData; delete authorName; delete authorGroup; }
+             t__text() { t__text::soap_default(NULL); }
+             virtual ~t__text() {
+                     soap_dealloc(creator, (void*)name);
+                     soap_dealloc(creator, (void*)date);
+                     soap_dealloc(creator, (void*)streamData);
+                     soap_dealloc(creator, (void*)authorName);
+                     soap_dealloc(creator, (void*)authorGroup);
+             }
 };
 #endif
 

@@ -1161,6 +1161,7 @@ void t__text::soap_default(struct soap *soap)
 	soap_default_xsd__string(soap, &this->t__text::authorGroup);
 	soap_default_t__type(soap, &this->t__text::type);
 	soap_default_xsd__float(soap, &this->t__text::similarity);
+    creator = soap;
 }
 
 void t__text::soap_serialize(struct soap *soap) const

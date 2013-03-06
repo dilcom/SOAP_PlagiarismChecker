@@ -78,7 +78,7 @@ Shingle::Shingle(t__text * inText, int num)
 		wordCount += 1;
     int * words = new int[wordCount + 10];
 	words[0] = 0;
-	int posWords = 1,
+    unsigned int posWords = 1,
         shingleCount = max(1, (int)(wordCount - WORDS_EACH_SHINGLE + 1));
 	count = min(shingleCount, MAX_SHINGLE_PER_TEXT);
 	for (int i = 0; i < posBuff; i++){
@@ -87,8 +87,8 @@ Shingle::Shingle(t__text * inText, int num)
 	}
 	words[posWords] = posBuff;
 	unsigned int *crcs = new unsigned int[shingleCount];
-	for (int i = 0; i < shingleCount; i++){
-        crcs[i] = Crc32(reinterpret_cast<const unsigned char*>(buff + words[i]), (words[i + min(WORDS_EACH_SHINGLE, (int)wordCount)] - words[i])*sizeof(wchar_t));
+    for (int i = 0; i < shingleCount; i++){
+        crcs[i] = Crc32(reinterpret_cast<const unsigned char*>(buff + words[i]), (words[i + min(WORDS_EACH_SHINGLE, (unsigned int)wordCount)] - words[i])*sizeof(wchar_t));
 	}
 	if (shingleCount > MAX_SHINGLE_PER_TEXT)
 		for (int i = 0; i < count; i++){
@@ -149,27 +149,20 @@ void Shingle::save(Db * targetDocs, Db * targetHash, int docNumber){
 
 	try{		
         Dbt key(&(textData->number), sizeof(textData->number));
-		Dbt dataDoc(textDocData, length);        
-        //key.set_flags(DB_DBT_REALLOC);
-        //dataDoc.set_flags(DB_DBT_REALLOC);
+        Dbt dataDoc(textDocData, length);
         Dbc * cursorp, *cursorq;
         targetDocs->cursor(NULL, &cursorp, DB_WRITECURSOR);
         cursorp->put(&key, &dataDoc, DB_KEYFIRST);
-		///< key in docs table is data in hashes table
-        //env->mutex_lock(dbmutex);
+        ///< key in docs table is data in hashes table
         cursorp->close();
         targetHash->cursor(NULL, &cursorq, DB_WRITECURSOR);
         Dbt keyHash((void*)(data), sizeof(data[0]));
-        //keyHash.set_flags(DB_DBT_REALLOC);
-        for (size_t i = 0; i < count; i++){
+        cursorq->put(&keyHash, &key, DB_KEYFIRST);
+        for (size_t i = 1; i < count; i++){
             keyHash.set_data((void*)(data + i));
             cursorq->put(&keyHash, &key, DB_KEYFIRST);
-		}
-        //free(keyHash.get_data());
+        }
         cursorq->close();
-        //env->mutex_unlock(dbmutex);
-        //free(key.get_data());
-        //free(dataDoc.get_data());
 	}
 	catch(...){
 		//TODO exceptions processing

@@ -6,19 +6,19 @@ ShingleAppLogger::ShingleAppLogger(){
 }
 
 ShingleAppLogger::~ShingleAppLogger(){
-	for (vector<ostream*>::iterator it = targets.begin() + 1; it != targets.end(); it++)
-		delete *it;
+    //for (vector<ostream*>::iterator it = targets.begin() + 1; it != targets.end(); it++)
+    //	delete *it;
 }
 
 void ShingleAppLogger::addTrgt(ostream * src){
-	if (src->good())
-		targets.push_back(src);
+    //if (src->good())
+    //	targets.push_back(src);
 }
 
 void ShingleAppLogger::addLogFile(char * filename){
-	ofstream * src = new ofstream();
-	src->open(filename, ios::out | ios::app);
-	addTrgt(src);
+    //ofstream * src = new ofstream();
+    //src->open(filename, ios::out | ios::app);
+    //addTrgt(src);
 }
 
 ShingleAppLogger & ShingleAppLogger::operator<<(char * item){

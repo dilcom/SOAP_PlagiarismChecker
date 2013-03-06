@@ -88,7 +88,6 @@ void ShingleApp::setMain(){
 }
 
 void ShingleApp::setChild(){
-	documentCount = 0;
     mainEx = false;
 }
 
@@ -178,10 +177,10 @@ void ShingleApp::findSimilar(t__text * txt){
 		}
 		sort(appResult.begin(), appResult.end(), objectcomp);
         if (appResult.empty() || appResult[0].similarity <= THRESHOLD_TO_SAVE) {
-			MUTEX_LOCK(mtx);
+        //	MUTEX_LOCK(mtx);
 			documentCount += 1;
 			int tmpk = documentCount;
-			MUTEX_UNLOCK(mtx);
+        //	MUTEX_UNLOCK(mtx);
             tested->save(docs, hashes, tmpk);
 		}	
 	}
@@ -207,7 +206,8 @@ int ShingleApp::shingleAlgorithm(t__text * txt, t__result *res){
 		initTextById(appResult[j].docId, textElement);
 		textElement->similarity = appResult[j].similarity;
         res->arrayOfTexts.push_back(*textElement);
-        //delete textElement;
+        textElement->streamData = NULL;
+        delete textElement;
 	}
 	if (LOG_EVERY_FCALL){
         *Log << "Request processed in " << (int)(time + clock()) << "msec\n";
@@ -236,7 +236,7 @@ void ShingleApp::stop(){
 SOAP_SOCKET queue[MAX_QUEUE]; ///< The global request queue of sockets
 int head = 0, tail = 0; // Queue head and tail
 COND_TYPE queue_cv;
-
+MUTEX_TYPE queue_mx;
 
 
 int ShingleApp::run(int port){
@@ -249,8 +249,8 @@ int ShingleApp::run(int port){
     if (!soap_valid_socket(m))
         exit(1);
     fprintf(stderr, "Socket connection successful %d\n", m);
-    MUTEX_SETUP(ShingleApp::mtx);
     COND_SETUP(queue_cv);
+    MUTEX_SETUP(queue_mx);
     for (i = 0; i < MAX_THR; i++)
     {
 		unsigned threadID;
@@ -291,12 +291,11 @@ int ShingleApp::run(int port){
         fprintf(stderr, "Waiting for thread %d to terminate... ", i);
         THREAD_JOIN(tid[i]);
         fprintf(stderr, "terminated\n");
-		documentCount += soap_thr[i]->documentCount;
-		soap_thr[i]->destroy();
+        soap_thr[i]->destroy();
 		delete soap_thr[i];
     }
-    MUTEX_CLEANUP(ShingleApp::mtx);
     COND_CLEANUP(queue_cv);
+    MUTEX_CLEANUP(queue_mx);
     soap_done(this);
     return 0;
  }
@@ -308,13 +307,14 @@ int ShingleApp::run(int port){
 #endif
 {
    ShingleApp *tsoap = static_cast<ShingleApp*>(soap);
-   for (;;)
+   for (unsigned int i = 0; 1; i+=1)
    {
       tsoap->socket = dequeue();
       if (!soap_valid_socket(tsoap->socket))
          break;
       tsoap->serve();
       fprintf(stderr, "served\n");
+      if (i % 64 == 0) tsoap->destroy();
    }
    return SOAP_OK;
 }
@@ -323,7 +323,7 @@ int DePlaguarism::enqueue(SOAP_SOCKET sock)
 {
    int status = SOAP_OK;
    int next;
-   MUTEX_LOCK(ShingleApp::mtx);
+   MUTEX_LOCK(queue_mx);
    next = tail + 1;
    if (next >= MAX_QUEUE)
       next = 0;
@@ -335,20 +335,20 @@ int DePlaguarism::enqueue(SOAP_SOCKET sock)
       tail = next;
    }
    COND_SIGNAL(queue_cv);
-   MUTEX_UNLOCK(ShingleApp::mtx);
+   MUTEX_UNLOCK(queue_mx);
    return status;
 }
 
 SOAP_SOCKET DePlaguarism::dequeue()
 {
    SOAP_SOCKET sock;
-   MUTEX_LOCK(ShingleApp::mtx);
+   MUTEX_LOCK(queue_mx);
    while (head == tail)
-       COND_WAIT(queue_cv, ShingleApp::mtx);
+       COND_WAIT(queue_cv, queue_mx);
    sock = queue[head++];
    if (head >= MAX_QUEUE)
       head = 0;
-   MUTEX_UNLOCK(ShingleApp::mtx);
+   MUTEX_UNLOCK(queue_mx);
    return sock;
 }
 
@@ -383,9 +383,12 @@ void ShingleApp::loadDB(){
 }
 
 void ShingleApp::closeDB(){
-    hashes->close(0);
-    docs->close(0);
-    env->close(0);
+    //hashes->close(0);
+    //docs->close(0);
+    //env->close(0);
+    delete hashes;
+    delete docs;
+    delete env;
 }
 
 void ShingleApp::resetDB(){
