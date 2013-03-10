@@ -76,7 +76,8 @@ int emulate_pthread_mutex_lock(volatile MUTEX_TYPE *mx)
 int emulate_pthread_cond_init(COND_TYPE *cv)
 {
   cv->waiters_count_ = 0;
-  cv->signal_event_ = CreateEvent(NULL, FALSE, FALSE, NULL);
+  cv->signal_event_ = CreateEventEx(NULL, NULL, FALSE, EVENT_ALL_ACCESS);
+  
   InitializeCriticalSection(&cv->waiters_count_lock_);
 
   return 0;

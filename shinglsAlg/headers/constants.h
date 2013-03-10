@@ -1,19 +1,30 @@
 #pragma once
 
 
+///< crossplatform f-s calls
+#ifdef _WIN32
+	#include <Windows.h>
+	#define MAKE_DIR(x) CreateDirectory(x, NULL)
+	#define SLEEP(x) Sleep(x)
+#else
+	#include <sys/stat.h>
+	#define MAKE_DIR(x) mkdir(x, S_IRWOTH)
+	#define SLEEP(x) sleep(x)
+#endif
+
 namespace DePlaguarism{
-    const unsigned int SERVICE_PORT = 9999; // port used for soap server
-    #define BACKLOG (100)	// Max. request backlog
-    #define MAX_THR (10) // Size of thread pool
-    #define MAX_QUEUE (1000) // Max. size of request queue
+    const unsigned int SERVICE_PORT = 9999; ///< port used for soap server
+    #define BACKLOG (100)	///< Max. request backlog
+    #define MAX_THR (10) ///< Size of thread pool
+    #define MAX_QUEUE (1000) ///< Max. size of request queue
 	//Shingle.h
-    const unsigned int MAX_SHINGLE_PER_TEXT = 120; // max Shingles in text
-    const unsigned int WORDS_EACH_SHINGLE = 4; // words in each Shingle
-    const unsigned int MIN_WORD_LENGTH = 3; // min word length to be processed
+    const unsigned int MAX_SHINGLE_PER_TEXT = 120; ///< max Shingles in text
+    const unsigned int WORDS_EACH_SHINGLE = 4; ///< words in each Shingle
+    const unsigned int MIN_WORD_LENGTH = 3; ///< min word length to be processed
 
 	//ShingleApp.h
-	const float THRESHOLD_TO_SAVE = 0.6; // maximum value from which new texts won`t be added to the database
-	const unsigned int DOCUMENTS_IN_RESPONSE = 10;// maximum count of documents which will be responced to client
+	const float THRESHOLD_TO_SAVE = 0.6; ///< maximum value from which new texts won`t be added to the database
+	const unsigned int DOCUMENTS_IN_RESPONSE = 10;///< maximum count of documents which will be responced to client
 
 	const char HASH_DB_NAME[] = "hash.db";
 	const char DOCS_DB_NAME[] = "docs.db";
@@ -22,5 +33,9 @@ namespace DePlaguarism{
 	//logger mode const
     const bool LOG_EVERY_FCALL = true;
 }
+
+
 //mode constants
 //#define MODE_DO_NOT_SAVE_RESULTS // database file will not be saved
+#define WITH_LOGGING ///< enables logging for function invokes
+

@@ -136,7 +136,7 @@ void Shingle::save(Db * targetDocs, Db * targetHash, int docNumber){
 	textData->number = docNumber;
     char * textDocData = new char[length];
     char * pointer = textDocData;
-    memcpy(pointer, &(textData->header), sizeof(DocHeader));
+    memcpy((void*)pointer, &(textData->header), sizeof(DocHeader));
 	pointer += sizeof(DocHeader);
     memcpy(pointer, textData->authorGroup.data(), textData->authorGroup.length());
     pointer += textData->authorGroup.length();

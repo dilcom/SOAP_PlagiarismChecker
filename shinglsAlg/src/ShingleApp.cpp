@@ -38,8 +38,7 @@ void ShingleApp::initTextById(int id, t__text * trgt){
         //key.set_flags(DB_DBT_REALLOC);
         //dataItem.set_flags(DB_DBT_REALLOC);
         docs->cursor(NULL, &cursorp, 0);        
-        int k = cursorp->get(&key, &dataItem, DB_SET);
-		cout << k;
+        cursorp->get(&key, &dataItem, DB_SET);
 		char * pointer = (char *)(dataItem.get_data());
 		DocHeader header = *(DocHeader *) pointer;
 		trgt->type = header.type;
@@ -177,10 +176,10 @@ void ShingleApp::findSimilar(t__text * txt){
 		}
 		sort(appResult.begin(), appResult.end(), objectcomp);
         if (appResult.empty() || appResult[0].similarity <= THRESHOLD_TO_SAVE) {
-        //	MUTEX_LOCK(mtx);
+        	MUTEX_LOCK(mtx);
 			documentCount += 1;
 			int tmpk = documentCount;
-        //	MUTEX_UNLOCK(mtx);
+        	MUTEX_UNLOCK(mtx);
             tested->save(docs, hashes, tmpk);
 		}	
 	}
@@ -246,8 +245,10 @@ int ShingleApp::run(int port){
     SOAP_SOCKET m, s;
     int i;
     m = this->bind(NULL, port, BACKLOG);
-    if (!soap_valid_socket(m))
-        exit(1);
+    if (!soap_valid_socket(m)){
+		*Log << "Connection error! Port may be busy!\n";
+        return 1;
+	}
     fprintf(stderr, "Socket connection successful %d\n", m);
     COND_SETUP(queue_cv);
     MUTEX_SETUP(queue_mx);
@@ -281,10 +282,11 @@ int ShingleApp::run(int port){
         while (enqueue(s) == SOAP_EOM)
             SLEEP(1);
     }
-    for (i = 0; i < MAX_THR; i++)
+    for (i = 0; i < MAX_THR; i++) ///< +5 is a magic number :D if we remove it, sometimes win pth emulation will hang
     {
         while (enqueue(SOAP_INVALID_SOCKET) == SOAP_EOM)
             SLEEP(1);
+        SLEEP(10);
     }
     for (i = 0; i < MAX_THR; i++)
     {
@@ -367,8 +369,8 @@ void ShingleApp::compactDB(){
 
 void ShingleApp::loadDB(){
     try{
+		MAKE_DIR(L"\db");
         env = new DbEnv(0);
-        //env->set_flags(DB_CDB_ALLDB, 1);
         env->open(ENV_NAME, DB_CREATE | DB_INIT_CDB | DB_INIT_MPOOL | DB_THREAD, 0);
         hashes = new Db(env, 0);
         docs = new Db(env, 0);
@@ -383,12 +385,12 @@ void ShingleApp::loadDB(){
 }
 
 void ShingleApp::closeDB(){
-    //hashes->close(0);
-    //docs->close(0);
-    //env->close(0);
-    delete hashes;
-    delete docs;
-    delete env;
+    hashes->close(0);
+    docs->close(0);
+    env->close(0);
+    //delete hashes;
+    //delete docs;
+    //delete env;
 }
 
 void ShingleApp::resetDB(){

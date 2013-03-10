@@ -116,7 +116,6 @@ The threads.h and threads.c code define the following portable API:
 # define COND_CLEANUP(x)	emulate_pthread_cond_destroy(&(x))
 # define COND_SIGNAL(x)		emulate_pthread_cond_signal(&(x))
 # define COND_WAIT(x,y)		emulate_pthread_cond_wait(&(x), &(y))
-# define SLEEP(x) Sleep(x)
 typedef struct
 { UINT waiters_count_;
   CRITICAL_SECTION waiters_count_lock_;
@@ -145,7 +144,6 @@ int emulate_pthread_cond_wait(COND_TYPE*, MUTEX_TYPE*);
 # define MUTEX_INITIALIZER	PTHREAD_MUTEX_INITIALIZER
 # define MUTEX_SETUP(x)		pthread_mutex_init(&(x), NULL)
 # define MUTEX_CLEANUP(x)	pthread_mutex_destroy(&(x))
-# define SLEEP(x) sleep(x)
 #if 0 /* 1: DEBUG MUTEX */
 # define MUTEX_LOCK(x)		(fprintf(stderr, "! LOCK   %p %s:%d\n", &x, __FILE__, __LINE__), pthread_mutex_lock(&(x)))
 # define MUTEX_UNLOCK(x)	(fprintf(stderr, "! UNLOCK %p %s:%d\n", &x, __FILE__, __LINE__), pthread_mutex_unlock(&(x)))
