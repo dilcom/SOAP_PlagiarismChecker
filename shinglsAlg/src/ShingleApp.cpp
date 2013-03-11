@@ -282,7 +282,7 @@ int ShingleApp::run(int port){
         while (enqueue(s) == SOAP_EOM)
             SLEEP(1);
     }
-    for (i = 0; i < MAX_THR; i++) ///< +5 is a magic number :D if we remove it, sometimes win pth emulation will hang
+    for (i = 0; i < MAX_THR; i++)
     {
         while (enqueue(SOAP_INVALID_SOCKET) == SOAP_EOM)
             SLEEP(1);
@@ -369,7 +369,7 @@ void ShingleApp::compactDB(){
 
 void ShingleApp::loadDB(){
     try{
-		MAKE_DIR(L"\db");
+        MAKE_DIR("\db");
         env = new DbEnv(0);
         env->open(ENV_NAME, DB_CREATE | DB_INIT_CDB | DB_INIT_MPOOL | DB_THREAD, 0);
         hashes = new Db(env, 0);
@@ -388,9 +388,9 @@ void ShingleApp::closeDB(){
     hashes->close(0);
     docs->close(0);
     env->close(0);
-    //delete hashes;
-    //delete docs;
-    //delete env;
+    delete hashes;
+    delete docs;
+    delete env;
 }
 
 void ShingleApp::resetDB(){

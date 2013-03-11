@@ -4,12 +4,14 @@
 ///< crossplatform f-s calls
 #ifdef _WIN32
 	#include <Windows.h>
-	#define MAKE_DIR(x) CreateDirectory(x, NULL)
+    #define MAKE_DIR(x) CreateDirectory(L##x, NULL)
 	#define SLEEP(x) Sleep(x)
+    #define PAUSE_STRING "pause"
 #else
-	#include <sys/stat.h>
-	#define MAKE_DIR(x) mkdir(x, S_IRWOTH)
-	#define SLEEP(x) sleep(x)
+    #include <sys/stat.h>
+    #define MAKE_DIR(x) mkdir(x, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
+    #define SLEEP(x) usleep(x*1000)
+    #define PAUSE_STRING "read -p \"Press any key to continue ...\" -n 1"
 #endif
 
 namespace DePlaguarism{
