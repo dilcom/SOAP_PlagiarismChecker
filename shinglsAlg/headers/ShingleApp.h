@@ -50,9 +50,7 @@ namespace DePlaguarism{
         static Db * hashes, ///< bdb table, contains pairs hash => doc_id
                   * docs;	///< bdb table, contains pairs doc_id => documentInfo
     public:
-		static MUTEX_TYPE mtx;///< crossplatform mutex
-        void stat();///< prints statistics about Berkeley DB
-        void compactDB();///< try to minimize memory pool of application
+        static MUTEX_TYPE mtx;///< crossplatform mutex
         void resetDB();///< closes and loads DB
         void loadDB();///< initializes DB handlers
         void closeDB();///< sloses all DB handlers

@@ -1,7 +1,7 @@
 #pragma once
 
 
-///< crossplatform f-s calls
+///< crossplatform define
 #ifdef _WIN32
 	#include <Windows.h>
     #define MAKE_DIR(x) CreateDirectory(L##x, NULL)
@@ -15,10 +15,6 @@
 #endif
 
 namespace DePlaguarism{
-    const unsigned int SERVICE_PORT = 9999; ///< port used for soap server
-    #define BACKLOG (100)	///< Max. request backlog
-    #define MAX_THR (10) ///< Size of thread pool
-    #define MAX_QUEUE (1000) ///< Max. size of request queue
 	//Shingle.h
     const unsigned int MAX_SHINGLE_PER_TEXT = 120; ///< max Shingles in text
     const unsigned int WORDS_EACH_SHINGLE = 4; ///< words in each Shingle
@@ -27,6 +23,11 @@ namespace DePlaguarism{
 	//ShingleApp.h
 	const float THRESHOLD_TO_SAVE = 0.6; ///< maximum value from which new texts won`t be added to the database
 	const unsigned int DOCUMENTS_IN_RESPONSE = 10;///< maximum count of documents which will be responced to client
+    const unsigned int SERVICE_PORT = 9999; ///< port used for soap server
+    //multithreading constants
+    const unsigned int BACKLOG = 100;	///< Max request backlog
+    const unsigned int MAX_THR  = 10; ///< Size of thread pool
+    const unsigned int MAX_QUEUE = 1000; ///< Max. size of request queue
 
 	const char HASH_DB_NAME[] = "hash.db";
 	const char DOCS_DB_NAME[] = "docs.db";

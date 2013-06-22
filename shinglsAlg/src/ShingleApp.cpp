@@ -35,8 +35,6 @@ void ShingleApp::initTextById(int id, t__text * trgt){
         Dbc *cursorp;
         Dbt key(&id, sizeof(id) );
         Dbt dataItem(0, 0);
-        //key.set_flags(DB_DBT_REALLOC);
-        //dataItem.set_flags(DB_DBT_REALLOC);
         docs->cursor(NULL, &cursorp, 0);        
         cursorp->get(&key, &dataItem, DB_SET);
 		char * pointer = (char *)(dataItem.get_data());
@@ -68,8 +66,6 @@ void ShingleApp::initTextById(int id, t__text * trgt){
 		trgt->date = reinterpret_cast<char*>(soap_malloc(this, strlen(date) + 1));
         strcpy(trgt->date, date);
         cursorp->close();
-        //free(dataItem.get_data());
-        //free(key.get_data());
 	}
 	catch(...){
         *Log << "!!!ERROR in ShingleApp::initTextById \n";
@@ -144,16 +140,11 @@ void ShingleApp::findSimilar(t__text * txt){
 	appResult.clear();
     try{
 		unsigned int cnt = tested->getCount();
-		unsigned int currentDocId;
-        //env->mutex_lock(*mutexDB);
-        //*Log << "!!!";
+        unsigned int currentDocId;
         hashes->cursor(NULL, &cursorp,  0);
-        //*Log << "!!!";
 		for (unsigned int i = 0; i < cnt; i++){
 			Dbt key((void*)(tested->getData() + i), sizeof(unsigned int));
             Dbt data(&currentDocId, sizeof(currentDocId));
-            //key.set_flags(DB_DBT_REALLOC);
-            //data.set_flags(DB_DBT_REALLOC);
 			int ret = cursorp->get(&key, &data, DB_SET);
 			while (ret != DB_NOTFOUND) {
 				unsigned int dt = *((unsigned int*)(data.get_data()));
@@ -163,11 +154,8 @@ void ShingleApp::findSimilar(t__text * txt){
 				else fResult[dt] = 1;
 				ret = cursorp->get(&key, &data, DB_NEXT_DUP);
             }
-            //free(data.get_data());
-            //free(key.get_data());
         }
         cursorp->close();
-        //env->mutex_unlock(*mutexDB);
 		unsigned int shCount = tested->getCount();
 		for (map<unsigned int, unsigned int>::iterator it = fResult.begin(); it != fResult.end(); it++){
             Pair * tmpPtr;
@@ -354,18 +342,6 @@ SOAP_SOCKET DePlaguarism::dequeue()
    return sock;
 }
 
-void ShingleApp::stat(){
-    env->stat_print(0);
-}
-
-void ShingleApp::compactDB(){
-    log() << "DB compact operation begin\n";
-    DbTxn * envTXN;
-    env->cdsgroup_begin(&envTXN);
-    docs->compact(envTXN, NULL, NULL, NULL, DB_FREE_SPACE, NULL);
-    hashes->compact(envTXN, NULL, NULL, NULL, DB_FREE_SPACE, NULL);
-    log() << "DB compact operation end\n";
-}
 
 void ShingleApp::loadDB(){
     try{
