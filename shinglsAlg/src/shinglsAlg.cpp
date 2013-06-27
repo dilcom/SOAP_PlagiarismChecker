@@ -11,8 +11,6 @@
 #include "../headers/ShingleApp.h"
 
 const string exitCommand = "exit";
-const string statCommand = "stat";
-const string compactCommand = "compact";
 const string resetDBcommand = "reset";
 
 using namespace DePlaguarism;
@@ -34,10 +32,6 @@ int main(int argc, char* argv[])
     string a;
     do {
         cin >> a;
-        if (a == statCommand)
-            srv->stat();
-        if (a == compactCommand)
-            srv->compactDB();
         if (a == resetDBcommand)
             srv->resetDB();
     } while (a != exitCommand);
