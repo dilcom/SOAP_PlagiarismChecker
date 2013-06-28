@@ -6,9 +6,8 @@ bool DePlaguarism::txtValid(t__text * a){
 	return (a->streamData && a->authorGroup && a->authorName && a->name);
 }
 
-DbEnv * ShingleApp::env; ///< database in BDB
-Db * ShingleApp::hashes; ///< bdb table, contains pairs hash => doc_id
-Db * ShingleApp::docs;	///< bdb table, contains pairs doc_id => documentInfo
+DataSrcAbstract * ShingleApp::hashes; ///< contains pairs hash => doc_id
+DataSrcAbstract * ShingleApp::docs;	///< contains pairs doc_id => documentInfo
 int ShingleApp::documentCount;///< count of document already stored in base
 MUTEX_TYPE ShingleApp::mtx;///< crossplatform mutex
 
@@ -31,13 +30,12 @@ string ShingleApp::ipToStr(){
 
 void ShingleApp::initTextById(int id, t__text * trgt){
 	clock_t time = - clock();
-	try{
-        Dbc *cursorp;
-        Dbt key(&id, sizeof(id) );
-        Dbt dataItem(0, 0);
-        docs->cursor(NULL, &cursorp, 0);        
-        cursorp->get(&key, &dataItem, DB_SET);
-		char * pointer = (char *)(dataItem.get_data());
+    try{
+        PieceOfData key((char*)(&id), sizeof(id) );
+        auto getResult = docs->getValues(key);
+        getResult->capacity();
+        PieceOfData data = getResult->back();
+        char * pointer = data.getValue();
 		DocHeader header = *(DocHeader *) pointer;
 		trgt->type = header.type;
 		pointer += sizeof(DocHeader);
@@ -65,7 +63,7 @@ void ShingleApp::initTextById(int id, t__text * trgt){
 		char * date = asctime(&(header.dateTime));
 		trgt->date = reinterpret_cast<char*>(soap_malloc(this, strlen(date) + 1));
         strcpy(trgt->date, date);
-        cursorp->close();
+        delete getResult;
 	}
 	catch(...){
         *Log << "!!!ERROR in ShingleApp::initTextById \n";
@@ -135,34 +133,38 @@ int ShingleApp::CompareText(t__text * txt, t__result * res){
 void ShingleApp::findSimilar(t__text * txt){
 	clock_t time = - clock();
 	map<unsigned int, unsigned int> fResult;
-	Shingle * tested = new Shingle(txt, 0);
-	Dbc *cursorp;
+    Shingle * tested = new Shingle(txt, 0);
 	appResult.clear();
     try{
 		unsigned int cnt = tested->getCount();
         unsigned int currentDocId;
-        hashes->cursor(NULL, &cursorp,  0);
-		for (unsigned int i = 0; i < cnt; i++){
-			Dbt key((void*)(tested->getData() + i), sizeof(unsigned int));
-            Dbt data(&currentDocId, sizeof(currentDocId));
-			int ret = cursorp->get(&key, &data, DB_SET);
-			while (ret != DB_NOTFOUND) {
-				unsigned int dt = *((unsigned int*)(data.get_data()));
-				map<unsigned int, unsigned int>::iterator it = fResult.find(dt);
-				if (it != fResult.end())
-					fResult[dt] = fResult[dt] + 1;
-				else fResult[dt] = 1;
-				ret = cursorp->get(&key, &data, DB_NEXT_DUP);
-            }
+        ///< first -- extract from data source documents with same hashes
+        auto requestKeys = new std::vector <PieceOfData>; ///< pointer on vector of keys
+        for (unsigned int i = 0; i < cnt; i++){
+            PieceOfData oneOfHashes((char*)(tested->getData() + i), sizeof(unsigned int));
+            requestKeys->push_back(oneOfHashes);
         }
-        cursorp->close();
-		unsigned int shCount = tested->getCount();
+        std::vector<PieceOfData> * docIds = hashes->getValues(*requestKeys);
+        ///< now we have vector of document ids that have same hashes as our document
+        ///< second -- count repeatings; because of huge count of ids we use a map
+        for (auto i = docIds->begin(); i != docIds->end(); i++){
+            unsigned int el = *(i->getValue());
+            auto it = fResult.find(el);
+            if (it != fResult.end()) ///< is there same docid in the map?
+                fResult[el] = fResult[el] + 1; ///< inc
+            else
+                fResult[el] = 1;
+        }
+        ///< now we have a map with pairs (document id; count of equal hashes)
+        ///< third -- create a vector sorted by count of equal hashes
 		for (map<unsigned int, unsigned int>::iterator it = fResult.begin(); it != fResult.end(); it++){
             Pair * tmpPtr;
-            appResult.push_back( *(tmpPtr = new Pair(it->first, (float)(it->second)/shCount)) );
+            appResult.push_back( *(tmpPtr = new Pair(it->first, (float)(it->second)/cnt)) );
             delete tmpPtr;
 		}
 		sort(appResult.begin(), appResult.end(), objectcomp);
+        ///< now we have a sorted vector of pairs, so the job is done
+        ///< fourth -- finally we should think about storing new document in DB
         if (appResult.empty() || appResult[0].similarity <= THRESHOLD_TO_SAVE) {
         	MUTEX_LOCK(mtx);
 			documentCount += 1;
@@ -170,6 +172,8 @@ void ShingleApp::findSimilar(t__text * txt){
         	MUTEX_UNLOCK(mtx);
             tested->save(docs, hashes, tmpk);
 		}	
+        delete requestKeys;
+        delete docIds;
 	}
 	catch(...){
         *Log << "!!!ERROR in ShingleApp::findSimilar\n";
@@ -345,14 +349,8 @@ SOAP_SOCKET DePlaguarism::dequeue()
 
 void ShingleApp::loadDB(){
     try{
-        MAKE_DIR("\db");
-        env = new DbEnv(0);
-        env->open(ENV_NAME, DB_CREATE | DB_INIT_CDB | DB_INIT_MPOOL | DB_THREAD, 0);
-        hashes = new Db(env, 0);
-        docs = new Db(env, 0);
-        hashes->set_flags(DB_DUP);
-        hashes->open(0, HASH_DB_NAME, NULL, DB_HASH, DB_CREATE | DB_THREAD, 0644);
-        docs->open(0, DOCS_DB_NAME, NULL, DB_BTREE, DB_CREATE | DB_THREAD, 0644);
+        hashes = new DataSrcBerkeleyDB(HASH_DB_NAME, ENV_NAME, DB_HASH, DB_DUP);
+        docs = new DataSrcBerkeleyDB(DOCS_DB_NAME, hashes, DB_BTREE);
     }
     catch (...){
         ///< TODO exception catching
@@ -361,12 +359,8 @@ void ShingleApp::loadDB(){
 }
 
 void ShingleApp::closeDB(){
-    hashes->close(0);
-    docs->close(0);
-    env->close(0);
-    delete hashes;
     delete docs;
-    delete env;
+    delete hashes;
 }
 
 void ShingleApp::resetDB(){

@@ -130,7 +130,7 @@ const TextDocument & Shingle::getText(){
 }
 
 
-void Shingle::save(Db * targetDocs, Db * targetHash, int docNumber){
+void Shingle::save(DataSrcAbstract *targetDocs, DataSrcAbstract *targetHash, int docNumber){
     int length = sizeof(textData->header) + textData->authorGroup.length() + textData->authorName.length() + textData->data.length()
         + textData->name.length();
 	textData->number = docNumber;
@@ -148,21 +148,13 @@ void Shingle::save(Db * targetDocs, Db * targetHash, int docNumber){
     pointer += textData->name.length();
 
 	try{		
-        Dbt key(&(textData->number), sizeof(textData->number));
-        Dbt dataDoc(textDocData, length);
-        Dbc * cursorp, *cursorq;
-        targetDocs->cursor(NULL, &cursorp, DB_WRITECURSOR);
-        cursorp->put(&key, &dataDoc, DB_KEYFIRST);
-        ///< key in docs table is data in hashes table
-        cursorp->close();
-        targetHash->cursor(NULL, &cursorq, DB_WRITECURSOR);
-        Dbt keyHash((void*)(data), sizeof(data[0]));
-        cursorq->put(&keyHash, &key, DB_KEYFIRST);
-        for (size_t i = 1; i < count; i++){
-            keyHash.set_data((void*)(data + i));
-            cursorq->put(&keyHash, &key, DB_KEYFIRST);
+        PieceOfData key((char*)(&(textData->number)), sizeof(textData->number));
+        PieceOfData dataDoc(textDocData, length);
+        targetDocs->saveValue(&key, &dataDoc);
+        for (size_t i = 0; i < count; i++){
+            PieceOfData keyHash((char*)(data + i), sizeof(data[i]));
+            targetHash->saveValue(&keyHash, &key);
         }
-        cursorq->close();
 	}
 	catch(...){
 		//TODO exceptions processing

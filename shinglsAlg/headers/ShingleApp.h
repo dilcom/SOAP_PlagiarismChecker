@@ -29,7 +29,7 @@ namespace DePlaguarism{
 
 	bool operator==(const Pair & left, const Pair & right);
 
-	struct ClassComp {
+    struct ClassComp { ///< it`s here to use it in sort
 		bool operator() (const Pair & left, const Pair & right) const;
 	};
 
@@ -38,7 +38,7 @@ namespace DePlaguarism{
 	{
 	protected:
         void initTextById(int id, t__text * trgt);///< creates new text item from DB, trgt is where it will be
-        ClassComp objectcomp;
+        ClassComp objectcomp; ///< compare obj for sort algorithm
 		vector<Pair> appResult;
         void findSimilar(t__text * txt);  ///< function compares new text with others already in the base
         ShingleAppLogger * Log;  ///< logger object. Sends messages in several streams
@@ -46,14 +46,13 @@ namespace DePlaguarism{
         bool flagContinue;///< setting to false will make application to stop (only after accepting one more connection)
         bool mainEx;///< setting to true will make instance to close DB handlers and free memory allocated for them
         static int documentCount;///< count of document already stored in base
-        static DbEnv * env; ///< database in BDB
-        static Db * hashes, ///< bdb table, contains pairs hash => doc_id
-                  * docs;	///< bdb table, contains pairs doc_id => documentInfo
+        static DePlaguarism::DataSrcAbstract * hashes, ///< bdb table, contains pairs hash => doc_id
+                                               * docs;	///< bdb table, contains pairs doc_id => documentInfo
     public:
         static MUTEX_TYPE mtx;///< crossplatform mutex
-        void resetDB();///< closes and loads DB
-        void loadDB();///< initializes DB handlers
-        void closeDB();///< sloses all DB handlers
+        void loadDB();///< initializes dataSorces
+        void closeDB();///< closes dataSorces
+        void resetDB();
         void stop();///< sets flagContinue to false, stops the application then it accepts one more connection
         void setMain();///< sets mainEx to true, allows application to close DB handlers and free memory allocated for them
         void setChild();///< sets mainEx to false & inits documentCount with 0

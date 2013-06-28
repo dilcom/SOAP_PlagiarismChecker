@@ -1,12 +1,18 @@
 #include "../headers/datasrcabstract.h"
 
-using namespace Deplaguarism;
+using namespace DePlaguarism;
 
+PieceOfData::PieceOfData(const char *ivalue, size_t isize){
+    size = isize;
+    value = new char[size];
+    std::copy(ivalue, ivalue + size, value);
+}
 
 PieceOfData::PieceOfData(const PieceOfData &src){
-    value = new char[src.size];
-    std::copy(src.value, src.value + src.size, value);
-    size = src.size;
+    size = src.getSize();
+    value = new char[size];
+    const char * vl = src.getValue();
+    std::copy(vl, vl + size, value);
 }
 
 PieceOfData::~PieceOfData(){
@@ -14,24 +20,15 @@ PieceOfData::~PieceOfData(){
 }
 
 
-KeyValuePair::~KeyValuePair(){
-    delete key;
-    delete data;
-}
-
 PieceOfData & PieceOfData::operator = (const PieceOfData & other){
     if (this != &other){
-
-        char * new_value = new char[other.size];
-        std::copy(other.value, other.value + other.size, new_value);
-
-        // 2: освобождаем "старую" память
-        delete [] value;
-
-        // 3: присваиваем значения в "новой" памяти объекту
+        size = other.getSize();
+        char * new_value = new char[size];
+        const char * vl = other.getValue();
+        std::copy(vl, vl + size, new_value);
+        if (value)
+            delete[] value;
         value = new_value;
-        size = other.size;
     }
-    // по соглашению всегда возвращаем *this
     return *this;
 }

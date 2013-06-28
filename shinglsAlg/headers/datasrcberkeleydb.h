@@ -5,9 +5,9 @@
 #include <memory>
 #include "constants.h"
 
-namespace Deplaguarism{
+namespace DePlaguarism{
 
-    class DataSrcBerkeleyDB : public Deplaguarism::DataSrcAbstract
+    class DataSrcBerkeleyDB : public DePlaguarism::DataSrcAbstract
     {
     private:
         DbEnv * env;
@@ -15,12 +15,13 @@ namespace Deplaguarism{
         bool master; ///< allows master to delete env
         DBTYPE tp;
     public:
-        DataSrcBerkeleyDB(char * dbName, char * envName, DBTYPE dbtype, u_int32_t flag = 0); ///< for single/master database
-        DataSrcBerkeleyDB(char * dbName, Db * mas, DBTYPE dbtype, u_int32_t flag = 0); ///< for slave databases
+        DataSrcBerkeleyDB(const char * dbName, const char * envName, DBTYPE dbtype, u_int32_t flag = 0); ///< for single/master database
+        DataSrcBerkeleyDB(const char *dbName, DataSrcAbstract *mas, DBTYPE dbtype, u_int32_t flag = 0); ///< for slave databases (inherites env from mas)
         ~DataSrcBerkeleyDB();
-        virtual std::shared_ptr< std::vector<PieceOfData> > getValues(const PieceOfData & key);
-        virtual std::shared_ptr< std::vector<PieceOfData> > getValues(const std::vector< PieceOfData > & keys);
-        virtual void saveValue(const KeyValuePair & item);
+        DbEnv * getEnv() { return env; }
+        virtual std::vector<PieceOfData> *getValues(const PieceOfData & key);
+        virtual std::vector<PieceOfData> * getValues(const std::vector< PieceOfData > & keys);
+        virtual void saveValue(PieceOfData * ikey, PieceOfData * idata);
     };//class header
 
 }//namespace
