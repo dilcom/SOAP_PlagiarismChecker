@@ -77,7 +77,22 @@ public:
 	virtual void *soap_get(struct soap*, const char*, const char*);
 	virtual void *soap_in(struct soap*, const char*, const char*);
              t__text() { t__text::soap_default(NULL); }
-             virtual ~t__text() {
+             t__text(const t__text & src) {
+                 creator = src.creator;
+                 name = (char*)(soap_malloc(creator, strlen(src.name)));
+                 strcpy(name, src.name);
+                 authorName = (char*)(soap_malloc(creator, strlen(src.authorName)));
+                 strcpy(authorName, src.authorName);
+                 authorGroup = (char*)(soap_malloc(creator, strlen(src.authorGroup)));
+                 strcpy(authorGroup, src.authorGroup);
+                 streamData = (char*)(soap_malloc(creator, strlen(src.streamData)));
+                 strcpy(streamData, src.streamData);
+                 date = (char*)(soap_malloc(creator, strlen(src.date)));
+                 strcpy(date, src.date);
+                 similarity = src.similarity;
+                 type = src.type;
+             }
+                 virtual ~t__text() {
                      soap_dealloc(creator, (void*)name);
                      soap_dealloc(creator, (void*)date);
                      soap_dealloc(creator, (void*)streamData);

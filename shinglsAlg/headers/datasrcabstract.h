@@ -4,6 +4,8 @@
 #include <vector>
 #include <string.h>
 #include <memory>
+#include "./DocHeader.h"
+
 #ifdef _WIN32
     #include "../include/Win32/db_cxx.h"
 #else
@@ -12,27 +14,13 @@
 
 namespace DePlaguarism{
 
-    class PieceOfData{ ///< officer no bada chargin' me if creating peace of data
-    private:
-        char * value;
-        size_t size;
-    public:
-        PieceOfData(const char * ivalue, size_t isize); ///< copies ivalue
-        PieceOfData(const PieceOfData & src); ///< copies value, not only value pointer
-        ~PieceOfData();
-        PieceOfData()
-            :value(NULL){}
-        PieceOfData & operator = (const PieceOfData & other);
-        char * getValue() const { return value; }
-        size_t getSize() const { return size; }
-    };
-
     class DataSrcAbstract
     {
     public:
-        virtual std::vector<PieceOfData> * getValues(const PieceOfData & key) = 0;
-        virtual std::vector<PieceOfData> * getValues(const std::vector<PieceOfData> & keys) = 0;
-        virtual void saveValue(PieceOfData * key, PieceOfData * data) = 0;
+        virtual std::vector<unsigned int> * getIdsByHashes(const unsigned int * hashes, unsigned int count) = 0;
+        virtual void saveIds(unsigned int docNumber, const unsigned int * hashes, unsigned int count) = 0;
+        virtual void saveDocument(DocHeader header, t__text * txt) = 0;
+        virtual void getDocument(unsigned int docNumber, t__text *trgt, soap * parent) = 0;
     };
 
 }

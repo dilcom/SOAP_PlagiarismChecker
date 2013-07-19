@@ -36,8 +36,7 @@ namespace DePlaguarism{
 	class ShingleApp :
 		public shingleService
 	{
-	protected:
-        void initTextById(int id, t__text * trgt);///< creates new text item from DB, trgt is where it will be
+    protected:
         ClassComp objectcomp; ///< compare obj for sort algorithm
 		vector<Pair> appResult;
         void findSimilar(t__text * txt);  ///< function compares new text with others already in the base

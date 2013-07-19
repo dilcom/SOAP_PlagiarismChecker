@@ -37,7 +37,7 @@ Shingle::Shingle(void)
 Shingle::Shingle(t__text * inText, int num)
 {
 	//canonization
-    textData = new TextDocument(*inText, num);
+    textData = new t__text(*inText);
 	
     wstring *ptrtxt = utf8to16 (inText->streamData);
     wstring txt = *ptrtxt;
@@ -105,6 +105,14 @@ Shingle::Shingle(t__text * inText, int num)
 	else
 		for (int i = 0; i < count; i++)
 			data[i] = crcs[i];
+    time_t a;
+    time(&a);
+    header.dateTime = *(localtime(&a));
+    header.authorGroup_len = strlen(textData->authorGroup);
+    header.authorName_len = strlen(textData->authorName);
+    header.data_len = strlen(textData->streamData);
+    header.textName_len = strlen(textData->name);
+    header.type = textData->type;
 	delete[] words;
     delete ptrtxt;
 	delete[] crcs;
@@ -125,41 +133,20 @@ unsigned int Shingle::getCount(){
 	return count;
 }
 
-const TextDocument & Shingle::getText(){
+const t__text & Shingle::getText(){
     return *(this->textData);
 }
 
 
 void Shingle::save(DataSrcAbstract *targetDocs, DataSrcAbstract *targetHash, int docNumber){
-    int length = sizeof(textData->header) + textData->authorGroup.length() + textData->authorName.length() + textData->data.length()
-        + textData->name.length();
-	textData->number = docNumber;
-    char * textDocData = new char[length];
-    char * pointer = textDocData;
-    memcpy((void*)pointer, &(textData->header), sizeof(DocHeader));
-	pointer += sizeof(DocHeader);
-    memcpy(pointer, textData->authorGroup.data(), textData->authorGroup.length());
-    pointer += textData->authorGroup.length();
-    memcpy(pointer, textData->authorName.data(), textData->authorName.length());
-    pointer += textData->authorName.length();
-    memcpy(pointer, textData->data.data(), textData->data.length());
-    pointer += textData->data.length();
-    memcpy(pointer, textData->name.data(), textData->name.length());
-    pointer += textData->name.length();
-
+    header.number = docNumber;
 	try{		
-        PieceOfData key((char*)(&(textData->number)), sizeof(textData->number));
-        PieceOfData dataDoc(textDocData, length);
-        targetDocs->saveValue(&key, &dataDoc);
-        for (size_t i = 0; i < count; i++){
-            PieceOfData keyHash((char*)(data + i), sizeof(data[i]));
-            targetHash->saveValue(&keyHash, &key);
-        }
-	}
+        targetHash->saveIds(header.number, data, count);
+        targetDocs->saveDocument(header, textData);
+    }
 	catch(...){
 		//TODO exceptions processing
-	}
-	delete[] textDocData;
+    }
 }
 
 const uint_least32_t Crc32Table[256] = {

@@ -1,8 +1,5 @@
 #pragma once
 
-#include "../include/utf8.h"
-#include "staffClasses.h"
-#include "constants.h"
 #include "datasrcberkeleydb.h"
 
 using namespace DePlaguarism;
@@ -12,13 +9,14 @@ namespace DePlaguarism{
 	class Shingle
     {
 	protected:
-		unsigned int data[MAX_SHINGLE_PER_TEXT]; ///< array with crc32 hashes from given text
-		unsigned int count; ///< data field length
-        TextDocument *textData;
+        unsigned int data[MAX_SHINGLE_PER_TEXT]; ///< array with crc32 hashes from given text
+        unsigned int count; ///< count of elements in data field
+        DocHeader header;
+        t__text *textData;
 	public:
 		const unsigned int * getData(); ///< getter for data field
 		unsigned int getCount(); ///< getter for count field
-		const TextDocument & getText(); ///< getter for text field
+        const t__text &getText(); ///< getter for text field
 		Shingle();
 		Shingle(t__text * txt, int num); ///< contructs object from UTF-8 text data
         ~Shingle();

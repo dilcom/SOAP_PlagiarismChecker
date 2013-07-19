@@ -40,33 +40,18 @@ DataSrcBerkeleyDB::~DataSrcBerkeleyDB(){
     }
 }
 
-std::vector<PieceOfData> * DataSrcBerkeleyDB::getValues(const PieceOfData & ikey){
-    Dbc *cursorp;
-    Dbt key(ikey.getValue(), ikey.getSize() );
-    Dbt dataItem(0, 0);
-    auto res = new std::vector<PieceOfData>;
-    dbSrc->cursor(NULL, &cursorp, 0);
-    int ret = cursorp->get(&key, &dataItem, DB_SET);
-    while (ret != DB_NOTFOUND) {
-        PieceOfData pieceOfResult((char*)(dataItem.get_data()), dataItem.get_size());
-        res->push_back(pieceOfResult);
-        ret = cursorp->get(&key, &dataItem, DB_NEXT_DUP);
-    }
-    cursorp->close();
-    return res;
-}
 
-std::vector<PieceOfData> *DataSrcBerkeleyDB::getValues(const std::vector< PieceOfData > & keys){
+std::vector<unsigned int> * DataSrcBerkeleyDB::getIdsByHashes(const unsigned int * hashes, unsigned int count){
     Dbc *cursorp;
-    auto res = new std::vector<PieceOfData>;
-    dbSrc->cursor(NULL, &cursorp, 0);
-    Dbt dataItem(0, 0);
-    for (auto it = keys.begin(); it != keys.end(); it++){
-        Dbt key((*it).getValue(), (*it).getSize() );
+    auto res = new std::vector<unsigned int>;
+    size_t size = sizeof(hashes[0]);
+    for (int i = 0; i < count; i += 1){
+        Dbt key((void*)(hashes + i), size);
+        Dbt dataItem(0, 0);
+        dbSrc->cursor(NULL, &cursorp, 0);
         int ret = cursorp->get(&key, &dataItem, DB_SET);
         while (ret != DB_NOTFOUND) {
-            PieceOfData pieceOfResult((char*)(dataItem.get_data()), dataItem.get_size());
-            res->push_back(pieceOfResult);
+            res->push_back( * ( (unsigned int *) (dataItem.get_data()) ) );
             ret = cursorp->get(&key, &dataItem, DB_NEXT_DUP);
         }
     }
@@ -74,11 +59,77 @@ std::vector<PieceOfData> *DataSrcBerkeleyDB::getValues(const std::vector< PieceO
     return res;
 }
 
-void DataSrcBerkeleyDB::saveValue(PieceOfData *ikey, PieceOfData *idata){
-    Dbt key(ikey->getValue(), ikey->getSize());
-    Dbt data(idata->getValue(), idata->getSize());
+void DataSrcBerkeleyDB::saveIds(unsigned int docNumber, const unsigned int * hashes, unsigned int count){
     Dbc * cursorp;
+    size_t size = sizeof(hashes[0]);
+    Dbt key((void*)hashes, size);
+    Dbt data((void*)&docNumber, sizeof(docNumber));
+    for (int i = 0; i < count; i += 1){
+        key.set_data((void*)(hashes + i));
+        key.set_size(size);
+        dbSrc->cursor(NULL, &cursorp, DB_WRITECURSOR);
+        cursorp->put(&key, &data, DB_KEYFIRST);
+    }
+    cursorp->close();
+}
+
+void DataSrcBerkeleyDB::saveDocument(DocHeader header, t__text * txt){
+    int length = sizeof(header) + header.authorGroup_len + header.authorName_len + header.data_len
+        + header.textName_len;
+    char * textDocData = new char[length];
+    char * pointer = textDocData;
+    memcpy((void*)pointer, &(header), sizeof(DocHeader));
+    pointer += sizeof(DocHeader);
+    memcpy(pointer, txt->authorGroup, header.authorGroup_len);
+    pointer += header.authorGroup_len;
+    memcpy(pointer, txt->authorName, header.authorName_len);
+    pointer += header.authorName_len;
+    memcpy(pointer, txt->streamData, header.data_len);
+    pointer += header.data_len;
+    memcpy(pointer, txt->name, header.textName_len);
+    pointer += header.textName_len;
+    Dbc * cursorp;
+    Dbt key((void*)&(header.number), sizeof(header.number));
+    Dbt data(textDocData, length);
     dbSrc->cursor(NULL, &cursorp, DB_WRITECURSOR);
     cursorp->put(&key, &data, DB_KEYFIRST);
+    cursorp->close();
+    delete[] textDocData;
+}
+
+void DataSrcBerkeleyDB::getDocument(unsigned int docNumber, t__text * trgt, soap * parent){
+    Dbc *cursorp;
+    dbSrc->cursor(NULL, &cursorp, 0);
+    Dbt dataItem(0, 0);
+    Dbt key((void*)(&docNumber), sizeof(docNumber) );
+    cursorp->get(&key, &dataItem, DB_SET);
+    char * pointer = (char*)(dataItem.get_data());
+    DocHeader header = *(DocHeader *) pointer;
+    trgt->type = header.type;
+    pointer += sizeof(DocHeader);
+
+    trgt->authorGroup = reinterpret_cast<char*>(soap_malloc(parent, header.authorGroup_len + 1));
+    memcpy(trgt->authorGroup, pointer, header.authorGroup_len);
+    trgt->authorGroup[header.authorGroup_len] = '\0';
+    pointer += header.authorGroup_len;
+
+    trgt->authorName = reinterpret_cast<char*>(soap_malloc(parent, header.authorName_len + 1));
+    memcpy(trgt->authorName, pointer, header.authorName_len);
+    trgt->authorName[header.authorName_len] = '\0';
+    pointer += header.authorName_len;
+
+    trgt->streamData = reinterpret_cast<char*>(soap_malloc(parent, header.data_len + 1));
+    memcpy(trgt->streamData, pointer, header.data_len);
+    trgt->streamData[header.data_len] = '\0';
+    pointer += header.data_len;
+
+    trgt->name = reinterpret_cast<char*>(soap_malloc(parent, header.textName_len + 1));
+    memcpy(trgt->name, pointer, header.textName_len);;
+    trgt->name[header.textName_len] = '\0';
+    pointer += header.textName_len;
+
+    char * date = asctime(&(header.dateTime));
+    trgt->date = reinterpret_cast<char*>(soap_malloc(parent, strlen(date) + 1));
+    strcpy(trgt->date, date);
     cursorp->close();
 }

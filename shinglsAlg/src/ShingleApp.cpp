@@ -28,53 +28,6 @@ string ShingleApp::ipToStr(){
 	return res;
 }
 
-void ShingleApp::initTextById(int id, t__text * trgt){
-	clock_t time = - clock();
-    try{
-        PieceOfData key((char*)(&id), sizeof(id) );
-        auto getResult = docs->getValues(key);
-        getResult->capacity();
-        PieceOfData data = getResult->back();
-        char * pointer = data.getValue();
-		DocHeader header = *(DocHeader *) pointer;
-		trgt->type = header.type;
-		pointer += sizeof(DocHeader);
-
-        trgt->authorGroup = reinterpret_cast<char*>(soap_malloc(this, header.authorGroup_len + 1));
-		memcpy(trgt->authorGroup, pointer, header.authorGroup_len);
-		trgt->authorGroup[header.authorGroup_len] = '\0';
-		pointer += header.authorGroup_len;
-
-		trgt->authorName = reinterpret_cast<char*>(soap_malloc(this, header.authorName_len + 1));
-		memcpy(trgt->authorName, pointer, header.authorName_len);
-		trgt->authorName[header.authorName_len] = '\0';
-		pointer += header.authorName_len;
-
-		trgt->streamData = reinterpret_cast<char*>(soap_malloc(this, header.data_len + 1));
-		memcpy(trgt->streamData, pointer, header.data_len);
-		trgt->streamData[header.data_len] = '\0';
-		pointer += header.data_len;
-
-		trgt->name = reinterpret_cast<char*>(soap_malloc(this, header.textName_len + 1));
-		memcpy(trgt->name, pointer, header.textName_len);;
-		trgt->name[header.textName_len] = '\0';
-		pointer += header.textName_len;
-
-		char * date = asctime(&(header.dateTime));
-		trgt->date = reinterpret_cast<char*>(soap_malloc(this, strlen(date) + 1));
-        strcpy(trgt->date, date);
-        delete getResult;
-	}
-	catch(...){
-        *Log << "!!!ERROR in ShingleApp::initTextById \n";
-		return;
-	}
-	
-	if (LOG_EVERY_FCALL){
-        *Log << "ShingleApp::initTextById execution took " << (int)(time + clock()) << "msec\n";
-	}
-}
-
 
 void ShingleApp::setMain(){
     mainEx = true;
@@ -139,18 +92,14 @@ void ShingleApp::findSimilar(t__text * txt){
 		unsigned int cnt = tested->getCount();
         unsigned int currentDocId;
         ///< first -- extract from data source documents with same hashes
-        auto requestKeys = new std::vector <PieceOfData>; ///< pointer on vector of keys
-        for (unsigned int i = 0; i < cnt; i++){
-            PieceOfData oneOfHashes((char*)(tested->getData() + i), sizeof(unsigned int));
-            requestKeys->push_back(oneOfHashes);
-        }
-        std::vector<PieceOfData> * docIds = hashes->getValues(*requestKeys);
+        auto data = tested->getData();
+        std::vector<unsigned int> * docIds = hashes->getIdsByHashes(data, tested->getCount());
         ///< now we have vector of document ids that have same hashes as our document
         ///< second -- count repeatings; because of huge count of ids we use a map
         for (auto i = docIds->begin(); i != docIds->end(); i++){
-            unsigned int el = *(i->getValue());
+            unsigned int el = *(i);
             auto it = fResult.find(el);
-            if (it != fResult.end()) ///< is there same docid in the map?
+            if (it != fResult.end()) ///< is there already same docid in the map?
                 fResult[el] = fResult[el] + 1; ///< inc
             else
                 fResult[el] = 1;
@@ -171,8 +120,7 @@ void ShingleApp::findSimilar(t__text * txt){
 			int tmpk = documentCount;
         	MUTEX_UNLOCK(mtx);
             tested->save(docs, hashes, tmpk);
-		}	
-        delete requestKeys;
+        }
         delete docIds;
 	}
 	catch(...){
@@ -193,8 +141,8 @@ int ShingleApp::shingleAlgorithm(t__text * txt, t__result *res){
     res->errCode = cnt ? STATE_OK : STATE_NO_SIMILAR;
 	res->arrayOfTexts.reserve(cnt);
 	for (int j = 0; j < cnt; j += 1){
-		t__text * textElement = new t__text();
-		initTextById(appResult[j].docId, textElement);
+        t__text * textElement = new t__text();
+        docs->getDocument(appResult[j].docId, textElement, this);
 		textElement->similarity = appResult[j].similarity;
         res->arrayOfTexts.push_back(*textElement);
         textElement->streamData = NULL;

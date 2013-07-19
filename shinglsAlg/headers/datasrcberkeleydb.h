@@ -19,9 +19,10 @@ namespace DePlaguarism{
         DataSrcBerkeleyDB(const char *dbName, DataSrcAbstract *mas, DBTYPE dbtype, u_int32_t flag = 0); ///< for slave databases (inherites env from mas)
         ~DataSrcBerkeleyDB();
         DbEnv * getEnv() { return env; }
-        virtual std::vector<PieceOfData> *getValues(const PieceOfData & key);
-        virtual std::vector<PieceOfData> * getValues(const std::vector< PieceOfData > & keys);
-        virtual void saveValue(PieceOfData * ikey, PieceOfData * idata);
+        virtual std::vector<unsigned int> * getIdsByHashes(const unsigned int * hashes, unsigned int count);
+        virtual void saveIds(unsigned int docNumber, const unsigned int * hashes, unsigned int count);
+        virtual void saveDocument(DocHeader header, t__text * txt);
+        virtual void getDocument(unsigned int docNumber, t__text *trgt, soap *parent);
     };//class header
 
 }//namespace
