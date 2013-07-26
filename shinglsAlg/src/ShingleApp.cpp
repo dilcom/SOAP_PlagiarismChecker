@@ -297,8 +297,8 @@ SOAP_SOCKET DePlaguarism::dequeue()
 
 void ShingleApp::loadDB(){
     try{
-        hashes = new DataSrcBerkeleyDB(HASH_DB_NAME, ENV_NAME, DB_HASH, DB_DUP);
-        docs = new DataSrcBerkeleyDB(DOCS_DB_NAME, hashes, DB_BTREE);
+        //hashes = new DataSrcBerkeleyDB(HASH_DB_NAME, ENV_NAME, DB_HASH, DB_DUP);
+        //docs = new DataSrcBerkeleyDB(DOCS_DB_NAME, hashes, DB_BTREE);
     }
     catch (...){
         ///< TODO exception catching
