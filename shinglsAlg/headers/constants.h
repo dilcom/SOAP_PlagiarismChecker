@@ -40,5 +40,7 @@ namespace DePlaguarism{
 
 //mode constants
 //#define MODE_DO_NOT_SAVE_RESULTS // database file will not be saved
+#define DATASRCREDISCLUSTER_H ///< disable redis
+//#define DATASRCBERKELEYDB_H ///< disable bdb
 #define WITH_LOGGING ///< enables logging for function invokes
 

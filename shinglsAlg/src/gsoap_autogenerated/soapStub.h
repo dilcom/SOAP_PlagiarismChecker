@@ -79,15 +79,15 @@ public:
              t__text() { t__text::soap_default(NULL); }
              t__text(const t__text & src) {
                  creator = src.creator;
-                 name = (char*)(soap_malloc(creator, strlen(src.name)));
+                 name = (char*)(soap_malloc(creator, strlen(src.name) + 1));
                  strcpy(name, src.name);
-                 authorName = (char*)(soap_malloc(creator, strlen(src.authorName)));
+                 authorName = (char*)(soap_malloc(creator, strlen(src.authorName) + 1));
                  strcpy(authorName, src.authorName);
-                 authorGroup = (char*)(soap_malloc(creator, strlen(src.authorGroup)));
+                 authorGroup = (char*)(soap_malloc(creator, strlen(src.authorGroup) + 1));
                  strcpy(authorGroup, src.authorGroup);
-                 streamData = (char*)(soap_malloc(creator, strlen(src.streamData)));
+                 streamData = (char*)(soap_malloc(creator, strlen(src.streamData) + 1));
                  strcpy(streamData, src.streamData);
-                 date = (char*)(soap_malloc(creator, strlen(src.date)));
+                 date = (char*)(soap_malloc(creator, strlen(src.date) + 1));
                  strcpy(date, src.date);
                  similarity = src.similarity;
                  type = src.type;

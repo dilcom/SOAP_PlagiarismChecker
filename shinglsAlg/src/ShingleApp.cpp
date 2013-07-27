@@ -8,6 +8,7 @@ bool DePlaguarism::txtValid(t__text * a){
 
 DataSrcAbstract * ShingleApp::hashes; ///< contains pairs hash => doc_id
 DataSrcAbstract * ShingleApp::docs;	///< contains pairs doc_id => documentInfo
+
 int ShingleApp::documentCount;///< count of document already stored in base
 MUTEX_TYPE ShingleApp::mtx;///< crossplatform mutex
 
@@ -297,8 +298,10 @@ SOAP_SOCKET DePlaguarism::dequeue()
 
 void ShingleApp::loadDB(){
     try{
-        //hashes = new DataSrcBerkeleyDB(HASH_DB_NAME, ENV_NAME, DB_HASH, DB_DUP);
-        //docs = new DataSrcBerkeleyDB(DOCS_DB_NAME, hashes, DB_BTREE);
+        //hashes = new DataSrcRedisCluster("127.0.0.1", 6379);
+        //docs = hashes;
+        hashes = new DataSrcBerkeleyDB(HASH_DB_NAME, ENV_NAME, DB_HASH, DB_DUP);
+        docs = new DataSrcBerkeleyDB(DOCS_DB_NAME, hashes, DB_BTREE);
     }
     catch (...){
         ///< TODO exception catching
@@ -307,6 +310,7 @@ void ShingleApp::loadDB(){
 }
 
 void ShingleApp::closeDB(){
+    //delete docs;
     delete docs;
     delete hashes;
 }

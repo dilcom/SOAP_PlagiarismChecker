@@ -1,3 +1,4 @@
+#include "constants.h"
 #ifndef DATASRCREDISCLUSTER_H
 #define DATASRCREDISCLUSTER_H
 #include "./datasrcabstract.h"
@@ -5,10 +6,14 @@
 #include "../include/threads.h"
 #include <stdint.h>
 #include <string>
+#include <vector>
+#include <string>
+#include <sstream>
 
 namespace DePlaguarism {
 
     uint16_t crc16(const char *buf, int len);
+    std::vector<std::string> *split(const std::string &s, char delim, std::vector<std::string> *elems);
 
     class DataSrcRedisCluster : public DataSrcAbstract
     {
@@ -18,9 +23,10 @@ namespace DePlaguarism {
         int clientsCount;
         static uint8_t slotMap[16384];
         static uint16_t lastMapping; ///< contains crc16 hash of last config
-        static MUTEX_TYPE mtx;///< used in configure to prevent remapping
+        static MUTEX_TYPE mtx;///< used in reinitializeCluster to prevent remapping
         void reinitializeCluster();
-        void initializeCluster(char *configString); ///< configStr is a string in reply from main redis node
+        void deinitializeCluster();
+        void initializeCluster(std::string *configString); ///< configStr is a string in reply from main redis node
     public:
         std::string * error;
         DataSrcRedisCluster(const char * ipAddress, int port);

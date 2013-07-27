@@ -62,11 +62,9 @@ std::vector<unsigned int> * DataSrcBerkeleyDB::getIdsByHashes(const unsigned int
 void DataSrcBerkeleyDB::saveIds(unsigned int docNumber, const unsigned int * hashes, unsigned int count){
     Dbc * cursorp;
     size_t size = sizeof(hashes[0]);
-    Dbt key((void*)hashes, size);
-    Dbt data((void*)&docNumber, sizeof(docNumber));
+    Dbt data((void*)(&docNumber), sizeof(docNumber));
     for (int i = 0; i < count; i += 1){
-        key.set_data((void*)(hashes + i));
-        key.set_size(size);
+        Dbt key((void*)(hashes + i), size);
         dbSrc->cursor(NULL, &cursorp, DB_WRITECURSOR);
         cursorp->put(&key, &data, DB_KEYFIRST);
     }

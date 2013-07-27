@@ -44,8 +44,13 @@ namespace DePlaguarism{
         bool flagContinue;///< setting to false will make application to stop (only after accepting one more connection)
         bool mainEx;///< setting to true will make instance to close DB handlers and free memory allocated for them
         static int documentCount;///< count of document already stored in base
+
+        //DePlaguarism::DataSrcAbstract * hashes, ///< bdb table, contains pairs hash => doc_id
+                                     // * docs;	///< bdb table, contains pairs doc_id => documentInfo
+
         static DePlaguarism::DataSrcAbstract * hashes, ///< bdb table, contains pairs hash => doc_id
-                                               * docs;	///< bdb table, contains pairs doc_id => documentInfo
+        * docs;	///< bdb table, contains pairs doc_id => documentInfo
+
     public:
         static MUTEX_TYPE mtx;///< crossplatform mutex
         void loadDB();///< initializes dataSorces
