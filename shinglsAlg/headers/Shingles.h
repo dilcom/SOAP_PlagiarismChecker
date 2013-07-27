@@ -20,7 +20,7 @@ namespace DePlaguarism{
 		Shingle();
 		Shingle(t__text * txt, int num); ///< contructs object from UTF-8 text data
         ~Shingle();
-        void save(DataSrcAbstract * targetDocs, DataSrcAbstract * targetHash, int docNumber); ///< saves all the data to DB
+        void save(DataSrcAbstract * targetDataSource, int docNumber); ///< saves all the data to DB
     };
 	uint_least32_t Crc32(const unsigned char * buf, size_t len); ///< crc32 hash function
 }

@@ -138,11 +138,11 @@ const t__text & Shingle::getText(){
 }
 
 
-void Shingle::save(DataSrcAbstract *targetDocs, DataSrcAbstract *targetHash, int docNumber){
+void Shingle::save(DataSrcAbstract *targetDataSource, int docNumber){
     header.number = docNumber;
 	try{		
-        targetHash->saveIds(header.number, data, count);
-        targetDocs->saveDocument(header, textData);
+        targetDataSource->saveIds(header.number, data, count);
+        targetDataSource->saveDocument(header, textData);
     }
 	catch(...){
 		//TODO exceptions processing

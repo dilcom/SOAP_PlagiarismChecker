@@ -6,8 +6,6 @@ bool DePlaguarism::txtValid(t__text * a){
 	return (a->streamData && a->authorGroup && a->authorName && a->name);
 }
 
-DataSrcAbstract * ShingleApp::hashes; ///< contains pairs hash => doc_id
-DataSrcAbstract * ShingleApp::docs;	///< contains pairs doc_id => documentInfo
 
 int ShingleApp::documentCount;///< count of document already stored in base
 MUTEX_TYPE ShingleApp::mtx;///< crossplatform mutex
@@ -40,6 +38,7 @@ void ShingleApp::setChild(){
 
 ShingleApp::ShingleApp(void)
 {
+    setMain();
     Log = new ShingleAppLogger();
 	ifstream f;
 	f.open("docNumber.t");
@@ -49,9 +48,9 @@ ShingleApp::ShingleApp(void)
 		documentCount = 0;
 	f.close();
     Log->addTrgt(&cout);
-    loadDB();
 	MUTEX_SETUP(mtx);
     Log->addLogFile("log.txt");
+    loadDB();
 }
 
 ShingleApp::~ShingleApp(void)
@@ -62,9 +61,9 @@ ShingleApp::~ShingleApp(void)
         f.write((char*)(&documentCount), sizeof(documentCount));
         f.close();
         delete Log;
-        closeDB();
 		MUTEX_CLEANUP(mtx);
     }
+    closeDB();
 }
 
 ShingleAppLogger & ShingleApp::log(){
@@ -94,7 +93,7 @@ void ShingleApp::findSimilar(t__text * txt){
         unsigned int currentDocId;
         ///< first -- extract from data source documents with same hashes
         auto data = tested->getData();
-        std::vector<unsigned int> * docIds = hashes->getIdsByHashes(data, tested->getCount());
+        std::vector<unsigned int> * docIds = dataSource->getIdsByHashes(data, tested->getCount());
         ///< now we have vector of document ids that have same hashes as our document
         ///< second -- count repeatings; because of huge count of ids we use a map
         for (auto i = docIds->begin(); i != docIds->end(); i++){
@@ -120,7 +119,7 @@ void ShingleApp::findSimilar(t__text * txt){
 			documentCount += 1;
 			int tmpk = documentCount;
         	MUTEX_UNLOCK(mtx);
-            tested->save(docs, hashes, tmpk);
+            tested->save(dataSource, tmpk);
         }
         delete docIds;
 	}
@@ -143,7 +142,7 @@ int ShingleApp::shingleAlgorithm(t__text * txt, t__result *res){
 	res->arrayOfTexts.reserve(cnt);
 	for (int j = 0; j < cnt; j += 1){
         t__text * textElement = new t__text();
-        docs->getDocument(appResult[j].docId, textElement, this);
+        dataSource->getDocument(appResult[j].docId, textElement, this);
 		textElement->similarity = appResult[j].similarity;
         res->arrayOfTexts.push_back(*textElement);
         textElement->streamData = NULL;
@@ -198,6 +197,7 @@ int ShingleApp::run(int port){
 		unsigned threadID;
         soap_thr[i] = new ShingleApp(*this);
         soap_thr[i]->setChild();
+        soap_thr[i]->loadDB();
         fprintf(stderr, "Starting thread %d\n", i);
         THREAD_CREATE(&tid[i], process_queue, (void*)soap_thr[i], &threadID);
     }
@@ -298,10 +298,8 @@ SOAP_SOCKET DePlaguarism::dequeue()
 
 void ShingleApp::loadDB(){
     try{
-        //hashes = new DataSrcRedisCluster("127.0.0.1", 6379);
-        //docs = hashes;
-        hashes = new DataSrcBerkeleyDB(HASH_DB_NAME, ENV_NAME, DB_HASH, DB_DUP);
-        docs = new DataSrcBerkeleyDB(DOCS_DB_NAME, hashes, DB_BTREE);
+        dataSource = new DataSrcRedisCluster("127.0.0.1", 6379);
+        //dataSource = new DataSrcBerkeleyDB(ENV_NAME, HASH_DB_NAME, DOCS_DB_NAME, this->mainEx);
     }
     catch (...){
         ///< TODO exception catching
@@ -310,9 +308,7 @@ void ShingleApp::loadDB(){
 }
 
 void ShingleApp::closeDB(){
-    //delete docs;
-    delete docs;
-    delete hashes;
+    delete dataSource;
 }
 
 void ShingleApp::resetDB(){

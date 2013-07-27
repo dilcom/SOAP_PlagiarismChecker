@@ -11,15 +11,13 @@ namespace DePlaguarism{
     class DataSrcBerkeleyDB : public DePlaguarism::DataSrcAbstract
     {
     private:
-        DbEnv * env;
-        Db * dbSrc;
-        bool master; ///< allows master to delete env
-        DBTYPE tp;
+        static DbEnv * env;
+        static Db * dbSrcHashes,
+                  * dbSrcDocs;
+        bool mainClient; ///< if true, object constructs and frees static envelope and dbs
     public:
-        DataSrcBerkeleyDB(const char * dbName, const char * envName, DBTYPE dbtype, u_int32_t flag = 0); ///< for single/master database
-        DataSrcBerkeleyDB(const char *dbName, DataSrcAbstract *mas, DBTYPE dbtype, u_int32_t flag = 0); ///< for slave databases (inherites env from mas)
-        ~DataSrcBerkeleyDB();
-        DbEnv * getEnv() { return env; }
+        DataSrcBerkeleyDB(const char * envName, const char * hashDbName, const char * docsDbName, bool mainFlag); ///< for single/master database
+        virtual ~DataSrcBerkeleyDB();
         virtual std::vector<unsigned int> * getIdsByHashes(const unsigned int * hashes, unsigned int count);
         virtual void saveIds(unsigned int docNumber, const unsigned int * hashes, unsigned int count);
         virtual void saveDocument(DocHeader header, t__text * txt);

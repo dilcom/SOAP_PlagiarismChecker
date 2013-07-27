@@ -45,11 +45,7 @@ namespace DePlaguarism{
         bool mainEx;///< setting to true will make instance to close DB handlers and free memory allocated for them
         static int documentCount;///< count of document already stored in base
 
-        //DePlaguarism::DataSrcAbstract * hashes, ///< bdb table, contains pairs hash => doc_id
-                                     // * docs;	///< bdb table, contains pairs doc_id => documentInfo
-
-        static DePlaguarism::DataSrcAbstract * hashes, ///< bdb table, contains pairs hash => doc_id
-        * docs;	///< bdb table, contains pairs doc_id => documentInfo
+        DePlaguarism::DataSrcAbstract * dataSource; ///< represents a db
 
     public:
         static MUTEX_TYPE mtx;///< crossplatform mutex

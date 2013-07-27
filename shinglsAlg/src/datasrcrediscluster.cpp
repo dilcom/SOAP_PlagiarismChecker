@@ -162,20 +162,28 @@ void DataSrcRedisCluster::saveIds(unsigned int docNumber, const unsigned int * h
     }
     for (int i = 0; i < count; i += 1){
         char tmp[15];
-        int len;
-        sprintf(tmp, "hash:%d%n", hashes[i], &len);
+        sprintf(tmp, "hash:%d", hashes[i]);
+        int len = strlen(tmp);
         redisReply * rep= (redisReply*)redisCommand(clients[slotMap[crc16(tmp, len) & 0x3fff]], "sadd %b %b", tmp, len, &docNumber, sizeof(docNumber));
+        freeReplyObject(rep);
     }
     for (int i = 0; i < clientsCount; i += 1){
-        redisCommand(clients[i], "exec");
+        redisReply * rep= (redisReply*)redisCommand(clients[i], "exec");
+        int k =0;
+        for (int j = 0; j < rep->elements; j += 1){
+            redisReply * aaa = rep->element[j];
+            if (aaa->type == REDIS_REPLY_ERROR)
+                k+=1;
+        }
+        freeReplyObject(rep);
     }
 }
 
 void DataSrcRedisCluster::saveDocument(DocHeader header, t__text * txt){
     char key[30];
-    int len;
     char tryCount = 0; ///< count of tries already done
-    sprintf(key, "document:number:%d%n", header.number, &len);
+    sprintf(key, "document:number:%d", header.number);
+    int len = strlen(key);
     redisContext * context = clients[slotMap[crc16(key, len) & 0x3fff]];
     bool flag = false;
     redisReply * rep;
@@ -216,14 +224,15 @@ void DataSrcRedisCluster::saveDocument(DocHeader header, t__text * txt){
 
 void DataSrcRedisCluster::getDocument(unsigned int docNumber, t__text *trgt, soap * parent){
     char key[30];
-    int len;
-    sprintf(key, "document:number:%d%n", docNumber, &len);
-    redisContext * context = clients[slotMap[crc16(key, len) & 0x3fff]];
+    sprintf(key, "document:number:%d", docNumber);
+    int len = strlen(key);
+    int contNum = slotMap[crc16(key, len) & 0x3fff];
+    redisContext * context = clients[contNum];
     redisReply * rep;
     bool flag = false;
     do {
         rep = (redisReply*)redisCommand(context, "hget %b textName", key, (size_t) len);
-        if (rep->type = REDIS_REPLY_ERROR) {
+        if (rep->type == REDIS_REPLY_ERROR) {
             reinitializeCluster();
             flag = true;
         }
@@ -262,7 +271,7 @@ std::vector<unsigned int> * DataSrcRedisCluster::getIdsByHashes(const unsigned i
     for (int i = 0; i < count; i += 1){
         char tmp[15];
         sprintf(tmp, "hash:%d", hashes[i]);
-        redisReply * rep = (redisReply*)redisCommand(clients[slotMap[crc16(tmp, strlen(tmp)) & 0x3fff]], "smembers %s %d", tmp);
+        redisReply * rep = (redisReply*)redisCommand(clients[slotMap[crc16(tmp, strlen(tmp)) & 0x3fff]], "smembers %s", tmp);
         for (int j = 0; j < rep->elements; j += 1){
             redisReply * el = rep->element[j];
             result->push_back(*((unsigned int *)(el->str)));
