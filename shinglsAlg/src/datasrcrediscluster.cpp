@@ -22,23 +22,31 @@ DataSrcRedisCluster::DataSrcRedisCluster(const char * ipAddress, int port)
 {
     MUTEX_SETUP(mtx);
     mainClient = redisConnect(ipAddress, port);
-    if (mainClient->err) {
-        error->append("Can`t connect to redis! Errstring: '");
-        error->append(mainClient->errstr);
-        error->append("'.");
-    } else {
-        redisReply * clusterInfo = (redisReply *)(redisCommand(mainClient, "cluster nodes"));
-        if (clusterInfo->type == REDIS_REPLY_ERROR) {
-            error->append("Something wrong with cluster! Errstring: '");
-            error->append(clusterInfo->str);
-            error->append("'.");
-        } else {
-            lastMapping = crc16(clusterInfo->str, clusterInfo->len);
-            std::string conf(clusterInfo->str);
-            initializeCluster(&conf);
-        }
-        freeReplyObject(clusterInfo);
+    ///< did we connect?
+    if (!mainClient)
+        throw("Can`t connect to redis!");
+    if(mainClient->err != REDIS_OK){
+        redisFree(mainClient);
+        throw("Can`t connect to redis!");
     }
+    ///< we are connected with redis =)
+
+    redisReply * clusterInfo = (redisReply *)(redisCommand(mainClient, "cluster nodes"));
+
+    ///< is the client a part of cluster? or maybe it doesn`t respond?
+    if (!clusterInfo)
+        throw("No reply from redis!");
+    if (clusterInfo->type == REDIS_REPLY_ERROR) {
+        freeReplyObject(rep);
+        throw("Redis replied with error on command 'cluster nodes'");
+    }
+    ///< no errors so we`re ready to initialize cluster
+    lastMapping = crc16(clusterInfo->str, clusterInfo->len);
+    std::string conf(clusterInfo->str);
+    initializeCluster(&conf);
+
+    freeReplyObject(clusterInfo);
+
 }
 
 void DataSrcRedisCluster::initializeCluster(std::string * configString){
@@ -85,42 +93,38 @@ void DataSrcRedisCluster::initializeCluster(std::string * configString){
             }
         } else {
             if (confTokens[2].find("master") != std::string::npos){
-                if (confTokens[6] == "connected"){
-                    ///< 1. connecting
-                    char ip[30],
-                            pos = confTokens[1].find(":");
-                    for (size_t j = 0; j < pos; j += 1)
-                        ip[j] = confTokens[1][j];
-                    ip[pos] = '\0';
-                    std::string a = confTokens[1].substr(pos + 1);
-                    int port;
-                    std::istringstream ( a ) >> port;
-                    clients[currentNodeNumber] = redisConnect(ip, port);
-                    ///< 2. slots assign
-                    auto slotIterator = confTokens.begin();
-                    slotIterator += 7;
-                    while (slotIterator != confTokens.end()){
-                        std::string * slotStr = &(*slotIterator);
-                        if (slotStr[0][0] != '[')
-                            if (slotStr->find("-") != std::string::npos){ ///< slot range or one slot?
-                                int slotRange[2];
-                                std::istringstream ( *slotStr ) >> slotRange[0] >> slotRange[1];
-                                slotRange[1] = - slotRange[1];
-                                for (int j = slotRange[0]; j <= slotRange[1]; j += 1)
-                                    slotMap[j] = currentNodeNumber;
-                            } else {
-                                int slot;
-                                std::istringstream ( *slotStr ) >> slot;
-                                slotMap[slot] = currentNodeNumber;
-                            }
-                        slotIterator += 1;
-                    }
-                    currentNodeNumber += 1;
-                } else {
-                    error->clear();
-                    error->append("One of cluster master nodes is down! Node address: ");
-                    error->append(confTokens[2]);
+                if (confTokens[6] == "disconnected")
+                    throw("One of master nodes is down!");
+                ///< 1. connecting
+                char ip[30],
+                        pos = confTokens[1].find(":");
+                for (size_t j = 0; j < pos; j += 1)
+                    ip[j] = confTokens[1][j];
+                ip[pos] = '\0';
+                std::string a = confTokens[1].substr(pos + 1);
+                int port;
+                std::istringstream ( a ) >> port;
+                clients[currentNodeNumber] = redisConnect(ip, port);
+                ///< 2. slots assign
+                auto slotIterator = confTokens.begin();
+                slotIterator += 7;
+                while (slotIterator != confTokens.end()){
+                    std::string * slotStr = &(*slotIterator);
+                    if (slotStr[0][0] != '[')
+                        if (slotStr->find("-") != std::string::npos){ ///< slot range or one slot?
+                            int slotRange[2];
+                            std::istringstream ( *slotStr ) >> slotRange[0] >> slotRange[1];
+                            slotRange[1] = - slotRange[1];
+                            for (int j = slotRange[0]; j <= slotRange[1]; j += 1)
+                                slotMap[j] = currentNodeNumber;
+                        } else {
+                            int slot;
+                            std::istringstream ( *slotStr ) >> slot;
+                            slotMap[slot] = currentNodeNumber;
+                        }
+                    slotIterator += 1;
                 }
+                currentNodeNumber += 1;
             } else {
                 clientsCount -= 1;
                 ///< decrement clientsCount because we are faced with slave node
@@ -130,23 +134,37 @@ void DataSrcRedisCluster::initializeCluster(std::string * configString){
 }
 
 void DataSrcRedisCluster::reinitializeCluster(){
-    redisReply * clusterInfo = (redisReply *)(redisCommand(mainClient, "cluster nodes"));
-    if (clusterInfo->type == REDIS_REPLY_ERROR) {
-        error->append("Something wrong with cluster! Errstring: '");
-        error->append(clusterInfo->str);
-        error->append("'.");
-    } else {
-        uint16_t newMapping = crc16(clusterInfo->str, clusterInfo->len);
-        MUTEX_LOCK(mtx);
-        if (newMapping != lastMapping){
-            deinitializeCluster();
-            std::string s(clusterInfo->str);
-            initializeCluster(&s);
-            lastMapping = newMapping;
-        }
-        MUTEX_UNLOCK(mtx);
+    for (int i = 0; i < clientsCount; i += 1){
+        redisCommand(clients[i], "exec"); ///< to be sure we`re not inside transaction
     }
-    freeReplyObject(clusterInfo->str);
+    redisReply * clusterInfo;
+    clusterInfo = (redisReply *)(redisCommand(mainClient, "cluster nodes"));
+    if (!clusterInfo || (clusterInfo->type == REDIS_REPLY_ERROR)){
+        char i = 1;
+        bool flag = true;
+        while (i < clientsCount && flag){
+            if (clusterInfo)
+                freeReplyObject(clusterInfo);
+            clusterInfo = (redisReply *)(redisCommand(clients[i], "cluster nodes"));
+            flag = !clusterInfo || (clusterInfo->type == REDIS_REPLY_ERROR);
+            i += 1;
+        }
+        if (flag){
+            if (clusterInfo)
+                freeReplyObject(clusterInfo);
+            throw("No one cluster node is responding!");
+        }
+    }
+    uint16_t newMapping = crc16(clusterInfo->str, clusterInfo->len);
+    MUTEX_LOCK(mtx);
+    if (newMapping != lastMapping){
+        deinitializeCluster();
+        std::string s(clusterInfo->str);
+        initializeCluster(&s);
+        lastMapping = newMapping;
+    }
+    MUTEX_UNLOCK(mtx);
+    freeReplyObject(clusterInfo);
 }
 
 void DataSrcRedisCluster::deinitializeCluster(){
@@ -157,25 +175,36 @@ void DataSrcRedisCluster::deinitializeCluster(){
 }
 
 void DataSrcRedisCluster::saveIds(unsigned int docNumber, const unsigned int * hashes, unsigned int count){
-    for (int i = 0; i < clientsCount; i += 1){
-        redisCommand(clients[i], "multi");
-    }
-    for (int i = 0; i < count; i += 1){
-        char tmp[15];
-        sprintf(tmp, "hash:%d", hashes[i]);
-        int len = strlen(tmp);
-        redisReply * rep= (redisReply*)redisCommand(clients[slotMap[crc16(tmp, len) & 0x3fff]], "sadd %b %b", tmp, len, &docNumber, sizeof(docNumber));
-        freeReplyObject(rep);
-    }
-    for (int i = 0; i < clientsCount; i += 1){
-        redisReply * rep= (redisReply*)redisCommand(clients[i], "exec");
-        int k =0;
-        for (int j = 0; j < rep->elements; j += 1){
-            redisReply * aaa = rep->element[j];
-            if (aaa->type == REDIS_REPLY_ERROR)
-                k+=1;
+    bool flag = false;
+    char tryCount = 0;
+    do {
+        flag = false;
+        for (int i = 0; i < clientsCount; i += 1){
+            redisCommand(clients[i], "multi");
         }
-        freeReplyObject(rep);
+        for (int i = 0; i < count; i += 1){
+            char tmp[15];
+            sprintf(tmp, "hash:%d", hashes[i]);
+            int len = strlen(tmp);
+            redisReply * rep= (redisReply*)redisCommand(clients[slotMap[crc16(tmp, len) & 0x3fff]], "sadd %b %b", tmp, len, &docNumber, sizeof(docNumber));
+            if (!rep || rep->type == REDIS_REPLY_ERROR){
+                reinitializeCluster();
+                flag = true;
+                if (rep)
+                    freeReplyObject(rep);
+            }
+            freeReplyObject(rep);
+        }
+        if (flag && tryCount < 10)
+            continue;
+        for (int i = 0; i < clientsCount; i += 1){
+            redisCommand(clients[i], "exec");
+        }
+        tryCount += 1;
+    } while (false);
+    if (tryCount >= 10) {
+        error->clear();
+        error->append("Too many tries to rebuild cluster!");
     }
 }
 
@@ -188,11 +217,14 @@ void DataSrcRedisCluster::saveDocument(DocHeader header, t__text * txt){
     bool flag = false;
     redisReply * rep;
     do {
+        flag = false;
         redisCommand(context, "multi");
         rep = (redisReply*)redisCommand(context, "hset %b textName %b", key, (size_t) len, txt->name, header.textName_len); ///< textName is a name of field in hash
         if (rep->type == REDIS_REPLY_ERROR){
             tryCount += 1;
             reinitializeCluster();
+            freeReplyObject(rep);
+            flag = true;
             if (tryCount < 10)
                 continue;
             else
@@ -204,22 +236,20 @@ void DataSrcRedisCluster::saveDocument(DocHeader header, t__text * txt){
         redisCommand(context, "hset %b authorGroup %b", key, (size_t) len, txt->authorGroup, header.authorGroup_len);
         redisCommand(context, "hset %b textType %b", key, (size_t) len, &(txt->type), sizeof(txt->type));
         char * date = asctime(&(header.dateTime));
-        redisCommand(context, "hset %b date %b", key, (size_t) len, date, strlen(date));
-        rep = (redisReply*)redisCommand(context, "exec");
+        rep = (redisReply*)redisCommand(context, "hset %b date %b", key, (size_t) len, date, strlen(date));
+        redisCommand(context, "exec");
         tryCount += 1;
-        if (rep->type == REDIS_REPLY_ERROR && tryCount < 10){
+        if (rep->type == REDIS_REPLY_ERROR){
+            tryCount += 1;
             reinitializeCluster();
             flag = true;
-        } else
-            flag = false;
+        }
+        freeReplyObject(rep);
     } while (flag);
     if (tryCount >= 10) {
         error->clear();
-        error->append("Error in save document function: ");
-        error->append(rep->str);
-        error->append("'.");
+        error->append("Too many tries to rebuild cluster!");
     }
-    freeReplyObject(rep);
 }
 
 void DataSrcRedisCluster::getDocument(unsigned int docNumber, t__text *trgt, soap * parent){
@@ -268,15 +298,33 @@ void DataSrcRedisCluster::getDocument(unsigned int docNumber, t__text *trgt, soa
 
 std::vector<unsigned int> * DataSrcRedisCluster::getIdsByHashes(const unsigned int * hashes, unsigned int count){
     auto result = new std::vector<unsigned int>();
-    for (int i = 0; i < count; i += 1){
-        char tmp[15];
-        sprintf(tmp, "hash:%d", hashes[i]);
-        redisReply * rep = (redisReply*)redisCommand(clients[slotMap[crc16(tmp, strlen(tmp)) & 0x3fff]], "smembers %s", tmp);
-        for (int j = 0; j < rep->elements; j += 1){
-            redisReply * el = rep->element[j];
-            result->push_back(*((unsigned int *)(el->str)));
+    bool flag = false;
+    char tryCount = 0;
+    do {
+        flag = false;
+        for (int i = 0; i < count; i += 1){
+            char tmp[15];
+            sprintf(tmp, "hash:%d", hashes[i]);
+            redisReply * rep = (redisReply*)redisCommand(clients[slotMap[crc16(tmp, strlen(tmp)) & 0x3fff]], "smembers %s", tmp);
+            if (!rep || rep->type == REDIS_REPLY_ERROR){
+                std::string err(rep->str);
+                if (err.find("MOVED") != std::string::npos){
+                    reinitializeCluster();
+                    flag = true;
+                    freeReplyObject(rep);
+                    break;
+                }
+            }
+            for (int j = 0; j < rep->elements; j += 1){
+                redisReply * el = rep->element[j];
+                result->push_back(*((unsigned int *)(el->str)));
+            }
+            freeReplyObject(rep);
         }
-        freeReplyObject(rep);
+    } while (flag && tryCount < 10);
+    if (tryCount >= 10) {
+        error->clear();
+        error->append("Too many tries to rebuild cluster!");
     }
     return result;
 }
