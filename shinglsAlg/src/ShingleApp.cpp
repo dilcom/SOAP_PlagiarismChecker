@@ -8,8 +8,8 @@ bool DePlaguarism::txtValid(t__text * a){
 
 
 int ShingleApp::documentCount;///< count of document already stored in base
-MUTEX_TYPE ShingleApp::mtx;///< crossplatform mutex
-
+MUTEX_TYPE ShingleApp::mtx;///< crossplatform mutex, used to prevent two documents with similar numbers
+dataSrc__t ShingleApp::dbType;
 string ShingleApp::nowToStr(){
 	string res;
 	time_t a;
@@ -19,7 +19,7 @@ string ShingleApp::nowToStr(){
 }
 
 string ShingleApp::ipToStr(){
-	string res;
+    string res("");
 	char str[16];
 	unsigned char * charIp = (unsigned char*)(&(this->ip));
 	sprintf(str, "%3d.%3d.%3d.%3d", charIp[3], charIp[2], charIp[1], charIp[0]);
@@ -38,6 +38,7 @@ void ShingleApp::setChild(){
 
 ShingleApp::ShingleApp(void)
 {
+    dbType = DATA_SRC_REDIS_CLUSTER;
     setMain();
     Log = new ShingleAppLogger();
 	ifstream f;
@@ -46,15 +47,15 @@ ShingleApp::ShingleApp(void)
 		f.read((char*)(&documentCount), sizeof(documentCount));
 	else
 		documentCount = 0;
-	f.close();
-    Log->addTrgt(&cout);
+    f.close();
 	MUTEX_SETUP(mtx);
-    Log->addLogFile("log.txt");
+    //Log->addLogFile("log.txt");
     loadDB();
 }
 
 ShingleApp::~ShingleApp(void)
 {	
+    closeDB();
     if (mainEx){
         ofstream f;
         f.open("docNumber.t");
@@ -63,7 +64,6 @@ ShingleApp::~ShingleApp(void)
         delete Log;
 		MUTEX_CLEANUP(mtx);
     }
-    closeDB();
 }
 
 ShingleAppLogger & ShingleApp::log(){
@@ -138,16 +138,19 @@ int ShingleApp::shingleAlgorithm(t__text * txt, t__result *res){
     *Log << "Request from " << ipToStr() << " recieved\n";
 	findSimilar(txt);
     int cnt = min(appResult.size(), (size_t)DOCUMENTS_IN_RESPONSE);
-    res->errCode = cnt ? STATE_OK : STATE_NO_SIMILAR;
 	res->arrayOfTexts.reserve(cnt);
 	for (int j = 0; j < cnt; j += 1){
         t__text * textElement = new t__text();
-        dataSource->getDocument(appResult[j].docId, textElement, this);
-		textElement->similarity = appResult[j].similarity;
-        res->arrayOfTexts.push_back(*textElement);
-        textElement->streamData = NULL;
-        delete textElement;
+        dataSource->getDocument(appResult[j].docId, &textElement, this);
+        if (textElement != NULL) {
+            textElement->similarity = appResult[j].similarity;
+            res->arrayOfTexts.push_back(*textElement);
+            delete textElement;
+        } else {
+            cnt -= 1;
+        }
 	}
+    res->errCode = res->arrayOfTexts.empty() ? STATE_NO_SIMILAR : STATE_OK;
 	if (LOG_EVERY_FCALL){
         *Log << "Request processed in " << (int)(time + clock()) << "msec\n";
         *Log << "Text size: " << (int)(sizeof(char)*strlen(txt->streamData)) << " bytes\n\n";
@@ -173,27 +176,27 @@ void ShingleApp::stop(){
 
 
 SOAP_SOCKET queue[MAX_QUEUE]; ///< The global request queue of sockets
-int head = 0, tail = 0; // Queue head and tail
-COND_TYPE queue_cv;
-MUTEX_TYPE queue_mx;
+int head = 0, tail = 0; ///< Queue head and tail
+COND_TYPE queue_cv; ///< used only in socket queuing
+MUTEX_TYPE queue_mx; ///< used only in socket queuing
 
 
 int ShingleApp::run(int port){
-    flagContinue = true;
-    ShingleApp *soap_thr[MAX_THR]; // each thread needs a runtime context
+    flagContinue = true; ///< once turned to false it will stop an application after next socket accept
+    ShingleApp *soap_thr[MAX_THR]; ///< each thread needs a runtime context
     THREAD_TYPE tid[MAX_THR];
     SOAP_SOCKET m, s;
     int i;
-    m = this->bind(NULL, port, BACKLOG);
+    m = this->bind(NULL, port, BACKLOG);    
     if (!soap_valid_socket(m)){
 		*Log << "Connection error! Port may be busy!\n";
         return 1;
 	}
-    fprintf(stderr, "Socket connection successful %d\n", m);
+    *Log << "Socket connection successful" << m << "\n";
     COND_SETUP(queue_cv);
     MUTEX_SETUP(queue_mx);
-    for (i = 0; i < MAX_THR; i++)
-    {
+    ///< 1. we create runtime contexts for threads and run them
+    for (i = 0; i < MAX_THR; i++) {
 		unsigned threadID;
         soap_thr[i] = new ShingleApp(*this);
         soap_thr[i]->setChild();
@@ -201,8 +204,8 @@ int ShingleApp::run(int port){
         fprintf(stderr, "Starting thread %d\n", i);
         THREAD_CREATE(&tid[i], process_queue, (void*)soap_thr[i], &threadID);
     }
-    for (;;)
-    {
+    ///< 2. We`re accepting every connection on our port and putting it into queue
+    while(true) {
         s = this->accept();
         if (!flagContinue)
             break;
@@ -215,55 +218,60 @@ int ShingleApp::run(int port){
             }
             else
             {
-                fprintf(stderr, "Server timed out\n");
+                *Log << "Server timed out\n";
                 break;
             }
         }
-        fprintf(stderr, "Thread %d accepts socket %d connection from IP %d.%d.%d.%d\n", i, s, (this->ip >> 24)&0xFF, (this->ip >> 16)&0xFF, (this->ip >> 8)&0xFF, this->ip&0xFF);
+        *Log << "Thread " << i << " accepts socket " << s << " connection from IP " << ipToStr() << "\n";
+        ///< SOAP_EOM means the following: "too many connections in queue, please wait for a slot, sir"
         while (enqueue(s) == SOAP_EOM)
             SLEEP(1);
     }
-    for (i = 0; i < MAX_THR; i++)
-    {
+
+    ///< 3. Now we want to stop all the threads, so lets fill the queue with invalid sockets and threads will stop itself
+    for (i = 0; i < MAX_THR; i++) {
         while (enqueue(SOAP_INVALID_SOCKET) == SOAP_EOM)
             SLEEP(1);
         SLEEP(10);
     }
-    for (i = 0; i < MAX_THR; i++)
-    {
-        fprintf(stderr, "Waiting for thread %d to terminate... ", i);
+    ///< 4. Waiting for all the threads to end
+    for (i = 0; i < MAX_THR; i++) {
+        *Log << "Waiting for thread " << i <<" to terminate... ";
         THREAD_JOIN(tid[i]);
-        fprintf(stderr, "terminated\n");
-        soap_thr[i]->destroy();
+        *Log << "terminated\n";
 		delete soap_thr[i];
     }
     COND_CLEANUP(queue_cv);
     MUTEX_CLEANUP(queue_mx);
-    soap_done(this);
     return 0;
  }
 
 #ifdef WIN32
-	unsigned _stdcall DePlaguarism::process_queue(void *soap)
+unsigned _stdcall DePlaguarism::process_queue(void *soap)
 #else
-	void *DePlaguarism::process_queue(void *soap)
+void *DePlaguarism::process_queue(void *soap)
 #endif
 {
    ShingleApp *tsoap = static_cast<ShingleApp*>(soap);
-   for (unsigned int i = 0; 1; i+=1)
-   {
+   unsigned int i = 0;
+   while (true) {
       tsoap->socket = dequeue();
       if (!soap_valid_socket(tsoap->socket))
          break;
+      unsigned int time = - clock();
       tsoap->serve();
-      fprintf(stderr, "served\n");
-      if (i % 64 == 0) tsoap->destroy();
+      time += clock();
+      tsoap->log() << "Served in " << (time/1000) << "msecs \n";
+      i += 1;
+      if (i == CONNECTIONS_BEFORE_RESET){
+          i = 0;
+          tsoap->destroy(); ///< deallocates all the memory allocated in soap_malloc(..)
+      }
    }
    return SOAP_OK;
 }
 
-int DePlaguarism::enqueue(SOAP_SOCKET sock)
-{
+int DePlaguarism::enqueue(SOAP_SOCKET sock) {
    int status = SOAP_OK;
    int next;
    MUTEX_LOCK(queue_mx);
@@ -282,8 +290,7 @@ int DePlaguarism::enqueue(SOAP_SOCKET sock)
    return status;
 }
 
-SOAP_SOCKET DePlaguarism::dequeue()
-{
+SOAP_SOCKET DePlaguarism::dequeue() {
    SOAP_SOCKET sock;
    MUTEX_LOCK(queue_mx);
    while (head == tail)
@@ -296,19 +303,32 @@ SOAP_SOCKET DePlaguarism::dequeue()
 }
 
 
-void ShingleApp::loadDB(){
-    try{
-        dataSource = new DataSrcRedisCluster("127.0.0.1", 6379);
-        //dataSource = new DataSrcBerkeleyDB(ENV_NAME, HASH_DB_NAME, DOCS_DB_NAME, this->mainEx);
-    }
-    catch (...){
-        ///< TODO exception catching
-        *Log << "Database opening error!\n";
-    }
+void ShingleApp::loadDB() {
+    bool flag = false;
+    do {
+        flag = false;
+        try{
+            switch (this->dbType){
+            case DATA_SRC_BDB:
+                dataSource = new DataSrcBerkeleyDB(ENV_NAME, HASH_DB_NAME, DOCS_DB_NAME, mainEx);
+                break;
+            case DATA_SRC_REDIS_CLUSTER:
+                dataSource = new DataSrcRedisCluster("127.0.0.1", 6379, mainEx);
+                break;
+            }
+        }
+        catch (...){
+            flag = true;
+            *Log << "Database opening error! Trying to reconnect...\n";
+            Log->flush();
+            SLEEP(1000);
+        }
+    } while (flag);
 }
 
 void ShingleApp::closeDB(){
-    delete dataSource;
+    if (dataSource)
+        delete dataSource;
 }
 
 void ShingleApp::resetDB(){

@@ -22,8 +22,7 @@ char * utf16to8(wstring src){
 }
 
 void wstrToLower(wstring * ws){
-	std::transform(ws->begin(), ws->end(), ws->begin(),
-                 towlower);
+    std::transform(ws->begin(), ws->end(), ws->begin(), towlower);
 }
 
 inline bool isAlph(wchar_t a){
@@ -141,8 +140,7 @@ const t__text & Shingle::getText(){
 void Shingle::save(DataSrcAbstract *targetDataSource, int docNumber){
     header.number = docNumber;
 	try{		
-        targetDataSource->saveIds(header.number, data, count);
-        targetDataSource->saveDocument(header, textData);
+        targetDataSource->save(header.number, data, count, header, textData);
     }
 	catch(...){
 		//TODO exceptions processing

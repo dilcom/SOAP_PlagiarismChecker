@@ -3,28 +3,28 @@
 
 using namespace DePlaguarism;
 ShingleAppLogger::ShingleAppLogger(){
+    targets.push_back(&cout);
 }
 
 ShingleAppLogger::~ShingleAppLogger(){
-#ifdef WITH_LOGGING
     for (vector<ostream*>::iterator it = targets.begin() + 1; it != targets.end(); it++)
-    	delete *it;
-#endif
+        delete *it;
 }
 
 void ShingleAppLogger::addTrgt(ostream * src){
-#ifdef WITH_LOGGING
     if (src->good())
-    	targets.push_back(src);
-#endif
+        targets.push_back(src);
 }
 
 void ShingleAppLogger::addLogFile(char * filename){
-#ifdef WITH_LOGGING
     ofstream * src = new ofstream();
     src->open(filename, ios::out | ios::app);
     addTrgt(src);
-#endif
+}
+
+void ShingleAppLogger::flush(){
+    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
+        **it << std::flush;
 }
 
 ShingleAppLogger & ShingleAppLogger::operator<<(char * item){
@@ -43,6 +43,12 @@ ShingleAppLogger & ShingleAppLogger::operator<<(int item){
 	for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
 		**it << item;
 	return *this;
+}
+
+ShingleAppLogger & ShingleAppLogger::operator<<(unsigned int item){
+    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
+        **it << item;
+    return *this;
 }
 
 ShingleAppLogger & ShingleAppLogger::operator<<(string item){

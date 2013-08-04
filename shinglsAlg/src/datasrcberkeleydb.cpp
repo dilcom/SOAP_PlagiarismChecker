@@ -56,7 +56,8 @@ std::vector<unsigned int> * DataSrcBerkeleyDB::getIdsByHashes(const unsigned int
     return res;
 }
 
-void DataSrcBerkeleyDB::saveIds(unsigned int docNumber, const unsigned int * hashes, unsigned int count){
+void DataSrcBerkeleyDB::save(unsigned int docNumber, const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt){
+    ///< 1. hash->docNumber
     Dbc * cursorp;
     size_t size = sizeof(hashes[0]);
     Dbt data((void*)(&docNumber), sizeof(docNumber));
@@ -66,9 +67,7 @@ void DataSrcBerkeleyDB::saveIds(unsigned int docNumber, const unsigned int * has
         cursorp->put(&key, &data, DB_KEYFIRST);
         cursorp->close();
     }
-}
-
-void DataSrcBerkeleyDB::saveDocument(DocHeader header, t__text * txt){
+    ///< 2. docNumber->document
     int length = sizeof(header) + header.authorGroup_len + header.authorName_len + header.data_len
         + header.textName_len;
     char * textDocData = new char[length];
@@ -83,17 +82,19 @@ void DataSrcBerkeleyDB::saveDocument(DocHeader header, t__text * txt){
     pointer += header.data_len;
     memcpy(pointer, txt->name, header.textName_len);
     pointer += header.textName_len;
-    Dbc * cursorp;
-    Dbt key((void*)&(header.number), sizeof(header.number));
-    Dbt data(textDocData, length);
-    dbSrcDocs->cursor(NULL, &cursorp, DB_WRITECURSOR);
-    cursorp->put(&key, &data, DB_KEYFIRST);
-    cursorp->close();
+    Dbc * cursorq;
+    Dbt keyDoc((void*)&(header.number), sizeof(header.number));
+    Dbt dataDoc(textDocData, length);
+    dbSrcDocs->cursor(NULL, &cursorq, DB_WRITECURSOR);
+    cursorq->put(&keyDoc, &dataDoc, DB_KEYFIRST);
+    cursorq->close();
     delete[] textDocData;
 }
 
-void DataSrcBerkeleyDB::getDocument(unsigned int docNumber, t__text * trgt, soap * parent){
+
+void DataSrcBerkeleyDB::getDocument(unsigned int docNumber, t__text ** trgtPtr, soap * parent){
     Dbc *cursorp;
+    t__text * trgt = *trgtPtr;
     dbSrcDocs->cursor(NULL, &cursorp, 0);
     Dbt dataItem(0, 0);
     Dbt key((void*)(&docNumber), sizeof(docNumber) );

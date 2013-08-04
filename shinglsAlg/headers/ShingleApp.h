@@ -44,7 +44,7 @@ namespace DePlaguarism{
         bool flagContinue;///< setting to false will make application to stop (only after accepting one more connection)
         bool mainEx;///< setting to true will make instance to close DB handlers and free memory allocated for them
         static int documentCount;///< count of document already stored in base
-
+        static dataSrc__t dbType;
         DePlaguarism::DataSrcAbstract * dataSource; ///< represents a db
 
     public:
@@ -60,7 +60,7 @@ namespace DePlaguarism{
 		string ipToStr(); ///< converts current client`s ip to string
         ShingleAppLogger & log();///< getter for Log field
         ShingleApp();
-		~ShingleApp();
+        virtual ~ShingleApp();
         virtual	int CompareText(t__text * txt, t__result *res);///< main method which process incoming request
 	};
 

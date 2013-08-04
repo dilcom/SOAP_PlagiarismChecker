@@ -16,10 +16,12 @@ namespace DePlaguarism{
 		void addTrgt(ostream * src);
 		void addLogFile(char * fileName);
 		~ShingleAppLogger();
+        void flush();
 		ShingleAppLogger & operator<<(char * item);
 		ShingleAppLogger & operator<<(char item);
 		ShingleAppLogger & operator<<(float item);
 		ShingleAppLogger & operator<<(string item);
 		ShingleAppLogger & operator<<(int item);
+        ShingleAppLogger & operator<<(unsigned int item);
 	};
 }

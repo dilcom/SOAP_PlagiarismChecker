@@ -19,9 +19,8 @@ namespace DePlaguarism{
     public:
         std::string * error;
         virtual std::vector<unsigned int> * getIdsByHashes(const unsigned int * hashes, unsigned int count) = 0;
-        virtual void saveIds(unsigned int docNumber, const unsigned int * hashes, unsigned int count) = 0;
-        virtual void saveDocument(DocHeader header, t__text * txt) = 0;
-        virtual void getDocument(unsigned int docNumber, t__text *trgt, soap * parent) = 0;
+        virtual void save(unsigned int docNumber, const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt) = 0;
+        virtual void getDocument(unsigned int docNumber, t__text **trgt, soap * parent) = 0;
         virtual ~DataSrcAbstract() {};
     };
 

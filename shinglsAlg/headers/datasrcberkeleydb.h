@@ -5,6 +5,7 @@
 #include <memory>
 #include "constants.h"
 #include "../include/threads.h"
+#include "../include/hiredis.h"
 
 namespace DePlaguarism{
 
@@ -19,9 +20,8 @@ namespace DePlaguarism{
         DataSrcBerkeleyDB(const char * envName, const char * hashDbName, const char * docsDbName, bool mainFlag); ///< for single/master database
         virtual ~DataSrcBerkeleyDB();
         virtual std::vector<unsigned int> * getIdsByHashes(const unsigned int * hashes, unsigned int count);
-        virtual void saveIds(unsigned int docNumber, const unsigned int * hashes, unsigned int count);
-        virtual void saveDocument(DocHeader header, t__text * txt);
-        virtual void getDocument(unsigned int docNumber, t__text *trgt, soap *parent);
+        virtual void save(unsigned int docNumber, const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt);
+        virtual void getDocument(unsigned int docNumber, t__text **trgtPtr, soap *parent);
     };//class header
 
 }//namespace

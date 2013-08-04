@@ -24,6 +24,7 @@ namespace DePlaguarism{
 	const float THRESHOLD_TO_SAVE = 0.6; ///< maximum value from which new texts won`t be added to the database
 	const unsigned int DOCUMENTS_IN_RESPONSE = 10;///< maximum count of documents which will be responced to client
     const unsigned int SERVICE_PORT = 9999; ///< port used for soap server
+    const unsigned int CONNECTIONS_BEFORE_RESET = 64; ///< frequency between soap->destroy calls
     //multithreading constants
     const unsigned int BACKLOG = 100;	///< Max request backlog
     const unsigned int MAX_THR  = 10; ///< Size of thread pool
