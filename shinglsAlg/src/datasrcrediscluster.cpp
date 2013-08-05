@@ -276,10 +276,31 @@ redisReply * DataSrcRedisCluster::redisCommandWithReply(redisContext *c, const c
     return reply;
 }
 
-void DataSrcRedisCluster::save(unsigned int docNumber, const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt){
-    bool flag = false;
+void DataSrcRedisCluster::save(const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt){
+    ///< 0. we need new document number
+    unsigned int docNumber;
+    bool flag = false;    
+    do {
+        flag = false;
+        try {
+            redisReply * docNumReply = redisCommandWithReply(clients[slotMap[crc16("current:document:number", 23) & 0x3fff]], "incr current:document:number");
+            if (docNumReply->type != REDIS_REPLY_INTEGER){
+                freeReplyObject(docNumReply);
+                throw("Have to reinit cluster!");
+            }
+            docNumber = docNumReply->integer;
+            freeReplyObject(docNumReply);
+        }
+        catch(...){
+            try {
+                reinitializeCluster();
+            }
+            catch (...) {}
+            flag = true;
+        }
+    } while (flag);
     char key[30];
-    sprintf(key, "document:number:%d", header.number);
+    sprintf(key, "document:number:%d", docNumber);
     int lenDoc = strlen(key);
     do {
         flag = false;

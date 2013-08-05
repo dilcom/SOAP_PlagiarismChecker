@@ -4,6 +4,8 @@ using namespace DePlaguarism;
 DbEnv * DePlaguarism::DataSrcBerkeleyDB::env;
 Db * DePlaguarism::DataSrcBerkeleyDB::dbSrcHashes;
 Db * DePlaguarism::DataSrcBerkeleyDB::dbSrcDocs;
+unsigned int DePlaguarism::DataSrcBerkeleyDB::docNumber;
+MUTEX_TYPE DePlaguarism::DataSrcBerkeleyDB::mtx;
 
 DataSrcBerkeleyDB::DataSrcBerkeleyDB(const char * envName, const char *hashDbName, const char *docsDbName, bool mainFlag)
 {
@@ -11,6 +13,7 @@ DataSrcBerkeleyDB::DataSrcBerkeleyDB(const char * envName, const char *hashDbNam
     if (mainFlag){
         try{
             MAKE_DIR(envName);
+            MUTEX_SETUP(mtx);
             env = new DbEnv(0);
             env->open(envName, DB_CREATE | DB_INIT_CDB | DB_INIT_MPOOL | DB_THREAD, 0);
             dbSrcHashes = new Db(env, 0);
@@ -18,23 +21,33 @@ DataSrcBerkeleyDB::DataSrcBerkeleyDB(const char * envName, const char *hashDbNam
             dbSrcHashes->open(0, hashDbName, NULL, DB_HASH, DB_CREATE | DB_THREAD, 0644);
             dbSrcDocs = new Db(env, 0);
             dbSrcDocs->open(0, docsDbName, NULL, DB_BTREE, DB_CREATE | DB_THREAD, 0644);
+            docNumber = 1;
+            Dbt dataDocNum(NULL, NULL);
+            unsigned int key = 0;
+            Dbt keyDocNum((void*)(&key), sizeof(key));
+            Dbc *cursorp;
+            dbSrcDocs->cursor(NULL, &cursorp, 0);
+            int ret = cursorp->get(&keyDocNum, &dataDocNum, DB_SET);
+            if (ret != DB_NOTFOUND)
+                docNumber = *((unsigned int *)dataDocNum.get_data());
+            cursorp->close();
         }
         catch (...){
-            //error->append("Database opening error!");
         }
     }
 }
 
 DataSrcBerkeleyDB::~DataSrcBerkeleyDB(){
     if (mainClient){
+        saveDocNumber();
         dbSrcHashes->close(0);
         delete dbSrcHashes;
         dbSrcDocs->close(0);
         delete dbSrcDocs;
         env->close(0);
         delete env;
+        MUTEX_CLEANUP(mtx);
     }
-    //delete error;
 }
 
 
@@ -56,18 +69,25 @@ std::vector<unsigned int> * DataSrcBerkeleyDB::getIdsByHashes(const unsigned int
     return res;
 }
 
-void DataSrcBerkeleyDB::save(unsigned int docNumber, const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt){
-    ///< 1. hash->docNumber
+void DataSrcBerkeleyDB::save(const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt){
+    ///< 0. we need new document number
+    MUTEX_LOCK(mtx);
+    unsigned int localDocNumber = docNumber;
+    docNumber += 1;
+    saveDocNumber();
+    MUTEX_UNLOCK(mtx);
+    //TO DO document number!
+    ///< 1. hash->localDocNumber
     Dbc * cursorp;
     size_t size = sizeof(hashes[0]);
-    Dbt data((void*)(&docNumber), sizeof(docNumber));
+    Dbt data((void*)(&localDocNumber), sizeof(localDocNumber));
     for (int i = 0; i < count; i += 1){
         Dbt key((void*)(hashes + i), size);
         dbSrcHashes->cursor(NULL, &cursorp, DB_WRITECURSOR);
         cursorp->put(&key, &data, DB_KEYFIRST);
         cursorp->close();
     }
-    ///< 2. docNumber->document
+    ///< 2. localDocNumber->document
     int length = sizeof(header) + header.authorGroup_len + header.authorName_len + header.data_len
         + header.textName_len;
     char * textDocData = new char[length];
@@ -83,7 +103,7 @@ void DataSrcBerkeleyDB::save(unsigned int docNumber, const unsigned int * hashes
     memcpy(pointer, txt->name, header.textName_len);
     pointer += header.textName_len;
     Dbc * cursorq;
-    Dbt keyDoc((void*)&(header.number), sizeof(header.number));
+    Dbt keyDoc((void*)&(localDocNumber), sizeof(localDocNumber));
     Dbt dataDoc(textDocData, length);
     dbSrcDocs->cursor(NULL, &cursorq, DB_WRITECURSOR);
     cursorq->put(&keyDoc, &dataDoc, DB_KEYFIRST);
@@ -91,10 +111,20 @@ void DataSrcBerkeleyDB::save(unsigned int docNumber, const unsigned int * hashes
     delete[] textDocData;
 }
 
+void DataSrcBerkeleyDB::saveDocNumber(){
+    unsigned int key = 0;
+    Dbt dataDocNum(&docNumber, sizeof(docNumber));
+    Dbt keyDocNum((void*)(&key), sizeof(key));
+    Dbc *cursorp;
+    dbSrcDocs->cursor(NULL, &cursorp, DB_WRITECURSOR);
+    cursorp->put(&keyDocNum, &dataDocNum, DB_KEYFIRST);
+    cursorp->close();
+}
 
 void DataSrcBerkeleyDB::getDocument(unsigned int docNumber, t__text ** trgtPtr, soap * parent){
     Dbc *cursorp;
     t__text * trgt = *trgtPtr;
+    trgt->creator = parent;
     dbSrcDocs->cursor(NULL, &cursorp, 0);
     Dbt dataItem(0, 0);
     Dbt key((void*)(&docNumber), sizeof(docNumber) );

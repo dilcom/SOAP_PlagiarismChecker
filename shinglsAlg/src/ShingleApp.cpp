@@ -7,8 +7,6 @@ bool DePlaguarism::txtValid(t__text * a){
 }
 
 
-int ShingleApp::documentCount;///< count of document already stored in base
-MUTEX_TYPE ShingleApp::mtx;///< crossplatform mutex, used to prevent two documents with similar numbers
 dataSrc__t ShingleApp::dbType;
 string ShingleApp::nowToStr(){
 	string res;
@@ -38,17 +36,9 @@ void ShingleApp::setChild(){
 
 ShingleApp::ShingleApp(void)
 {
-    dbType = DATA_SRC_REDIS_CLUSTER;
+    dbType = DATA_SRC_BDB;
     setMain();
     Log = new ShingleAppLogger();
-	ifstream f;
-	f.open("docNumber.t");
-	if (f)
-		f.read((char*)(&documentCount), sizeof(documentCount));
-	else
-		documentCount = 0;
-    f.close();
-	MUTEX_SETUP(mtx);
     //Log->addLogFile("log.txt");
     loadDB();
 }
@@ -57,12 +47,7 @@ ShingleApp::~ShingleApp(void)
 {	
     closeDB();
     if (mainEx){
-        ofstream f;
-        f.open("docNumber.t");
-        f.write((char*)(&documentCount), sizeof(documentCount));
-        f.close();
         delete Log;
-		MUTEX_CLEANUP(mtx);
     }
 }
 
@@ -86,11 +71,10 @@ int ShingleApp::CompareText(t__text * txt, t__result * res){
 void ShingleApp::findSimilar(t__text * txt){
 	clock_t time = - clock();
 	map<unsigned int, unsigned int> fResult;
-    Shingle * tested = new Shingle(txt, 0);
+    Shingle * tested = new Shingle(txt);
 	appResult.clear();
     try{
-		unsigned int cnt = tested->getCount();
-        unsigned int currentDocId;
+        unsigned int cnt = tested->getCount();
         ///< first -- extract from data source documents with same hashes
         auto data = tested->getData();
         std::vector<unsigned int> * docIds = dataSource->getIdsByHashes(data, tested->getCount());
@@ -115,11 +99,7 @@ void ShingleApp::findSimilar(t__text * txt){
         ///< now we have a sorted vector of pairs, so the job is done
         ///< fourth -- finally we should think about storing new document in DB
         if (appResult.empty() || appResult[0].similarity <= THRESHOLD_TO_SAVE) {
-        	MUTEX_LOCK(mtx);
-			documentCount += 1;
-			int tmpk = documentCount;
-        	MUTEX_UNLOCK(mtx);
-            tested->save(dataSource, tmpk);
+            tested->save(dataSource);
         }
         delete docIds;
 	}

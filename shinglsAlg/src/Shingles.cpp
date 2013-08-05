@@ -33,7 +33,7 @@ Shingle::Shingle(void)
 {
 }
 
-Shingle::Shingle(t__text * inText, int num)
+Shingle::Shingle(t__text * inText)
 {
 	//canonization
     textData = new t__text(*inText);
@@ -137,10 +137,9 @@ const t__text & Shingle::getText(){
 }
 
 
-void Shingle::save(DataSrcAbstract *targetDataSource, int docNumber){
-    header.number = docNumber;
+void Shingle::save(DataSrcAbstract *targetDataSource){
 	try{		
-        targetDataSource->save(header.number, data, count, header, textData);
+        targetDataSource->save(data, count, header, textData);
     }
 	catch(...){
 		//TODO exceptions processing

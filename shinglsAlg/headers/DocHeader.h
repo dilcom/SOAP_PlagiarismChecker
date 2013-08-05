@@ -10,7 +10,6 @@ namespace DePlaguarism{
 
     struct DocHeader {
         tm dateTime;
-        unsigned int number;
         size_t textName_len;
         size_t authorName_len;
         size_t authorGroup_len;
