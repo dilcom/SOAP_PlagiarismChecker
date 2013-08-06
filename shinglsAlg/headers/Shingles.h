@@ -1,6 +1,6 @@
-#pragma once
+#ifndef SHINGLES_H
+#define SHINGLES_H
 
-#include "datasrcberkeleydb.h"
 #include "datasrcrediscluster.h"
 using namespace DePlaguarism;
 
@@ -24,3 +24,5 @@ namespace DePlaguarism{
     };
 	uint_least32_t Crc32(const unsigned char * buf, size_t len); ///< crc32 hash function
 }
+
+#endif

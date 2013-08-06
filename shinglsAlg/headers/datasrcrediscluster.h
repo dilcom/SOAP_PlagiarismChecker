@@ -1,11 +1,6 @@
 #ifndef DATASRCREDISCLUSTER_H
 #define DATASRCREDISCLUSTER_H
 #include "./datasrcberkeleydb.h"
-#include <stdint.h>
-#include <string>
-#include <vector>
-#include <string>
-#include <sstream>
 
 namespace DePlaguarism {
 

@@ -2,10 +2,6 @@
 #define DATASRCBERKELEYDB_H
 
 #include "datasrcabstract.h"
-#include <memory>
-#include "constants.h"
-#include "../include/threads.h"
-#include "../include/hiredis.h"
 
 namespace DePlaguarism{
 

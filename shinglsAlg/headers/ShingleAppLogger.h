@@ -1,8 +1,7 @@
-#pragma once
+#ifndef SHINGLE_APP_LOGGER_H
+#define SHINGLE_APP_LOGGER_H
 
-#include <vector>
-#include <iostream>
-#include <fstream>
+#include "./precompiled.h"
 
 using namespace std;
 namespace DePlaguarism{
@@ -25,3 +24,5 @@ namespace DePlaguarism{
         ShingleAppLogger & operator<<(unsigned int item);
 	};
 }
+
+#endif

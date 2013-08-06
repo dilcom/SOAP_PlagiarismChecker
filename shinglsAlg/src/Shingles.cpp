@@ -1,7 +1,7 @@
-﻿#include "../headers/stdafx.h"
-#include "../headers/Shingles.h"
-#pragma comment (lib, "../lib/libdb53.lib")
- 
+﻿#include "../headers/Shingles.h"
+#ifdef _WIN32
+    #pragma comment (lib, "../lib/libdb53.lib")
+#endif
 using namespace std;
 using namespace DePlaguarism;
 

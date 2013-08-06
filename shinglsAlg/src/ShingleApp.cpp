@@ -1,4 +1,3 @@
-#include "../headers/stdafx.h"
 #include "../headers/ShingleApp.h"
 using namespace DePlaguarism;
 

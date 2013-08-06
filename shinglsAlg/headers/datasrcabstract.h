@@ -1,16 +1,9 @@
 #ifndef DATASRCABSTRACT_H
 #define DATASRCABSTRACT_H
 
-#include <vector>
-#include <string.h>
-#include <memory>
 #include "./DocHeader.h"
-
-#ifdef _WIN32
-    #include "../include/Win32/db_cxx.h"
-#else
-    #include "../include/UNIX/db_cxx.h"
-#endif
+#include "constants.h"
+#include "../include/threads.h"
 
 namespace DePlaguarism{
 
