@@ -22,7 +22,7 @@ DataSrcBerkeleyDB::DataSrcBerkeleyDB(const char * envName, const char *hashDbNam
             dbSrcDocs = new Db(env, 0);
             dbSrcDocs->open(0, docsDbName, NULL, DB_BTREE, DB_CREATE | DB_THREAD, 0644);
             docNumber = 1;
-            Dbt dataDocNum(NULL, NULL);
+            Dbt dataDocNum(NULL, 0);
             unsigned int key = 0;
             Dbt keyDocNum((void*)(&key), sizeof(key));
             Dbc *cursorp;
@@ -55,7 +55,7 @@ std::vector<unsigned int> * DataSrcBerkeleyDB::getIdsByHashes(const unsigned int
     Dbc *cursorp;
     auto res = new std::vector<unsigned int>;
     size_t size = sizeof(hashes[0]);
-    for (int i = 0; i < count; i += 1){
+    for (unsigned int i = 0; i < count; i += 1){
         Dbt key((void*)(hashes + i), size);
         Dbt dataItem(0, 0);
         dbSrcHashes->cursor(NULL, &cursorp, 0);
@@ -81,7 +81,7 @@ void DataSrcBerkeleyDB::save(const unsigned int * hashes, unsigned int count, Do
     Dbc * cursorp;
     size_t size = sizeof(hashes[0]);
     Dbt data((void*)(&localDocNumber), sizeof(localDocNumber));
-    for (int i = 0; i < count; i += 1){
+    for (unsigned int i = 0; i < count; i += 1){
         Dbt key((void*)(hashes + i), size);
         dbSrcHashes->cursor(NULL, &cursorp, DB_WRITECURSOR);
         cursorp->put(&key, &data, DB_KEYFIRST);

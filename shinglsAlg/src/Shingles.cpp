@@ -80,20 +80,20 @@ Shingle::Shingle(t__text * inText)
     unsigned int posWords = 1,
         shingleCount = max(1, (int)(wordCount - WORDS_EACH_SHINGLE + 1));
 	count = min(shingleCount, MAX_SHINGLE_PER_TEXT);
-	for (int i = 0; i < posBuff; i++){
+    for (size_t i = 0; i < posBuff; i++){
 		if (buff[i] == ' ')
 			words[posWords++] = i;
 	}
 	words[posWords] = posBuff;
 	unsigned int *crcs = new unsigned int[shingleCount];
-    for (int i = 0; i < shingleCount; i++){
+    for (unsigned int i = 0; i < shingleCount; i++){
         crcs[i] = Crc32(reinterpret_cast<const unsigned char*>(buff + words[i]), (words[i + min(WORDS_EACH_SHINGLE, (unsigned int)wordCount)] - words[i])*sizeof(wchar_t));
 	}
 	if (shingleCount > MAX_SHINGLE_PER_TEXT)
-		for (int i = 0; i < count; i++){
+        for (unsigned int i = 0; i < count; i++){
 			unsigned int minData = crcs[0],
 				minI = 0;
-			for (int j = 1; j < shingleCount; j++)
+            for (unsigned int j = 1; j < shingleCount; j++)
 				if (crcs[j] < minData){
 					minData = crcs[j];
 					minI = j;
@@ -102,7 +102,7 @@ Shingle::Shingle(t__text * inText)
 				data[i] = minData;
 		}
 	else
-		for (int i = 0; i < count; i++)
+        for (unsigned int i = 0; i < count; i++)
 			data[i] = crcs[i];
     time_t a;
     time(&a);

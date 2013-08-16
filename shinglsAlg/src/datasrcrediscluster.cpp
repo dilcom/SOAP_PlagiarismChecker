@@ -88,8 +88,8 @@ void DataSrcRedisCluster::initializeCluster(std::string * configString, bool rem
                 throw("One of master nodes is down!");
             ///< 1. connecting only if it`s not myself
             if (confTokens[2].find("myself") == std::string::npos){
-                char ip[30],
-                        pos = confTokens[1].find(":");
+                char ip[30];
+                unsigned int pos = confTokens[1].find(":");
                 for (size_t j = 0; j < pos; j += 1)
                     ip[j] = confTokens[1][j];
                 ip[pos] = '\0';
@@ -108,7 +108,7 @@ void DataSrcRedisCluster::initializeCluster(std::string * configString, bool rem
                 slotIterator += 7;
                 while (slotIterator != confTokens.end()){
                     std::string * slotStr = &(*slotIterator);
-                    if (slotStr[0][0] != '[')
+                    if (slotStr[0][0] != '[') {
                         if (slotStr->find("-") != std::string::npos){ ///< slot range or one slot?
                             int slotRange[2];
                             std::istringstream ( *slotStr ) >> slotRange[0] >> slotRange[1];
@@ -120,6 +120,7 @@ void DataSrcRedisCluster::initializeCluster(std::string * configString, bool rem
                             std::istringstream ( *slotStr ) >> slot;
                             slotMap[slot] = nodeId;
                         }
+                    }
                     slotIterator += 1;
                 }
             }
@@ -243,7 +244,7 @@ void DataSrcRedisCluster::redisCommandWithoutReply(redisContext *c, const char *
         freeReplyObject(reply);
         throw("Redis got an error in reply!");
     }
-    for (int i = 0; i < reply->elements; i += 1){
+    for (unsigned int i = 0; i < reply->elements; i += 1){
         if (reply->element[i]->type == REDIS_REPLY_ERROR){
             freeReplyObject(reply);
             throw("Redis got an error in reply!");
@@ -267,7 +268,7 @@ redisReply * DataSrcRedisCluster::redisCommandWithReply(redisContext *c, const c
         freeReplyObject(reply);
         throw("Redis got an error in reply!");
     }
-    for (int i = 0; i < reply->elements; i += 1){
+    for (unsigned int i = 0; i < reply->elements; i += 1){
         if (reply->element[i]->type == REDIS_REPLY_ERROR){
             freeReplyObject(reply);
             throw("Redis got an error in reply!");
@@ -312,7 +313,7 @@ void DataSrcRedisCluster::save(const unsigned int * hashes, unsigned int count, 
             }
             ///< 2. add all the data to save
             ///< 2.1. hash->docNumber
-            for (int i = 0; i < count; i += 1){
+            for (unsigned int i = 0; i < count; i += 1){
                 char tmp[15];
                 sprintf(tmp, "hash:%d", hashes[i]);
                 int len = strlen(tmp);
@@ -407,13 +408,13 @@ std::vector<unsigned int> * DataSrcRedisCluster::getIdsByHashes(const unsigned i
         flag = false;
         result->clear();
         try {
-            for (int i = 0; i < count; i += 1){
+            for (unsigned int i = 0; i < count; i += 1){
                 char tmp[15];
                 sprintf(tmp, "hash:%d", hashes[i]);
                 int k = slotMap[crc16(tmp, strlen(tmp)) & 0x3fff];
                 redisContext * client = clients[k];
                 redisReply * rep = redisCommandWithReply(client, "smembers %s", tmp);
-                for (int j = 0; j < rep->elements; j += 1){
+                for (unsigned int j = 0; j < rep->elements; j += 1){
                     redisReply * el = rep->element[j];
                     result->push_back(*((unsigned int *)(el->str)));
                 }

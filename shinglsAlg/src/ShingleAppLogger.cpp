@@ -15,7 +15,7 @@ void ShingleAppLogger::addTrgt(ostream * src){
         targets.push_back(src);
 }
 
-void ShingleAppLogger::addLogFile(char * filename){
+void ShingleAppLogger::addLogFile(const char * filename){
     ofstream * src = new ofstream();
     src->open(filename, ios::out | ios::app);
     addTrgt(src);
@@ -26,7 +26,7 @@ void ShingleAppLogger::flush(){
         **it << std::flush;
 }
 
-ShingleAppLogger & ShingleAppLogger::operator<<(char * item){
+ShingleAppLogger & ShingleAppLogger::operator<<(const char * item){
 	for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
 		**it << item;
 	return *this;
@@ -50,7 +50,7 @@ ShingleAppLogger & ShingleAppLogger::operator<<(unsigned int item){
     return *this;
 }
 
-ShingleAppLogger & ShingleAppLogger::operator<<(string item){
+ShingleAppLogger & ShingleAppLogger::operator<<(const string & item){
 	for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
 		(**it).write(item.data(), item.size());
 	return *this;

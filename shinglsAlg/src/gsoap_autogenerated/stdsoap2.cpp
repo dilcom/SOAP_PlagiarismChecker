@@ -228,6 +228,9 @@ static int tcp_gethost(struct soap*, const char *addr, struct in_addr *inaddr);
 static SOAP_SOCKET tcp_connect(struct soap*, const char *endpoint, const char *host, int port);
 static SOAP_SOCKET tcp_accept(struct soap*, SOAP_SOCKET, struct sockaddr*, int*);
 static int tcp_select(struct soap*, SOAP_SOCKET, int, int);
+#ifdef SOAP_USE_MASTER_SOCKETS
+int tcp_multi_select(struct soap*, SOAP_SOCKET *, int , int *, int, int);
+#endif
 static int tcp_disconnect(struct soap*);
 static int tcp_closesocket(struct soap*, SOAP_SOCKET);
 static int tcp_shutdownsocket(struct soap*, SOAP_SOCKET, int);
@@ -4442,6 +4445,157 @@ tcp_select(struct soap *soap, SOAP_SOCKET sk, int flags, int timeout)
     soap->errnum = soap_socket_errno(s);
   return r;
 }
+
+/*
+ * s is array of sockets
+ * numSocket = length of array
+ * selSockets = array of flags for each socket
+ */
+#ifdef SOAP_USE_MASTER_SOCKETS
+int
+tcp_multi_select(struct soap *soap, SOAP_SOCKET * s, int numSocket, int * selSockets, int flags, int timeout)
+{ register int r;
+  struct timeval tv;
+  int maxSocket=(int)s[0], i=0;
+  fd_set fd[3], *rfd, *sfd, *efd;
+  soap->errnum = 0;
+
+  // get maximum for socket s
+  for(i=1; i<numSocket; i++)
+  { if (maxSocket < (int)s[i])
+	  maxSocket = (int)s[i];
+  }
+
+#ifndef WIN32
+  /* if fd max set size exceeded, use poll() when available */
+#if defined(__QNX__) || defined(QNX) /* select() is not MT safe on some QNX */
+  if (1)
+#else
+  if (maxSocket >= (int)FD_SETSIZE)
+#endif
+#ifdef HAVE_POLL
+  { struct pollfd * pollfdPtr = NULL;
+    int retries = 0;
+    // alloc space for pollfd
+    pollfdPtr = (struct pollfd*)soap_malloc(soap, sizeof(struct pollfd) * numSocket);
+    if (pollfdPtr==NULL)
+    { DBGLOG(TEST,SOAP_MESSAGE(fdebug, "Cannot allocate memory for %d pollfd structures\n", numSocket));
+      soap->error = ENOMEM;
+      return -1;
+    }
+    // setup polfd structures
+    for (i=0;i<numSocket;i++)
+    { pollfdPtr[i].fd = (int)s[i];
+	  pollfdPtr[i].events = 0;
+	  if (flags & SOAP_TCP_SELECT_RCV)
+	    pollfdPtr[i].events |= POLLIN;
+	  if (flags & SOAP_TCP_SELECT_SND)
+		pollfdPtr[i].events |= POLLOUT;
+      if (flags & SOAP_TCP_SELECT_ERR)
+        pollfdPtr[i].events |= POLLERR;
+    }
+    if (timeout < 0)
+      timeout /= -1000; /* -usec -> ms */
+    else if (timeout <= 1000000) /* avoid overflow */
+      timeout *= 1000; /* sec -> ms */
+    else
+    { retries = timeout / 1000000;
+      timeout = 1000000000;
+    }
+    do r = poll(pollfdPtr, numSocket, timeout);
+    while (r == 0 && retries--);
+    if (r > 0)
+    { r = 0;
+      for(i=0; i<numSocket; i++)
+        selSockets[i]=0;
+      for (i=0;i<numSocket;i++)
+      { if ((flags & SOAP_TCP_SELECT_RCV) && (pollfdPtr[i].revents & POLLIN))
+      	{ r |= SOAP_TCP_SELECT_RCV;
+      	  selSockets[i] |= SOAP_TCP_SELECT_RCV;
+      	}
+        if ((flags & SOAP_TCP_SELECT_SND) && (pollfdPtr[i].revents & POLLOUT))
+        { r |= SOAP_TCP_SELECT_SND;
+          selSockets[i] |= SOAP_TCP_SELECT_SND;
+        }
+        if ((flags & SOAP_TCP_SELECT_ERR) && (pollfdPtr[i].revents & POLLERR))
+        { r |= SOAP_TCP_SELECT_ERR;
+          selSockets[i] |= SOAP_TCP_SELECT_ERR;
+        }
+      }
+    }
+    else if (r < 0)
+      soap->errnum = soap_socket_errno(s);
+    free(pollfdPtr);
+    return r;
+  }
+#else
+  { soap->error = SOAP_FD_EXCEEDED;
+    return -1;
+  }
+#endif
+#endif
+  rfd = sfd = efd = NULL;
+  if (flags & SOAP_TCP_SELECT_RCV)
+  { rfd = &fd[0];
+    FD_ZERO(rfd);
+    for(i=0; i<numSocket; i++)
+      FD_SET(s[i], rfd);
+  }
+  if (flags & SOAP_TCP_SELECT_SND)
+  { sfd = &fd[1];
+    FD_ZERO(sfd);
+    for(i=0; i<numSocket; i++)
+      FD_SET(s[i], sfd);
+  }
+  if (flags & SOAP_TCP_SELECT_ERR)
+  { efd = &fd[2];
+    FD_ZERO(efd);
+    for(i=0; i<numSocket; i++)
+      FD_SET(s[i], efd);
+  }
+  if (timeout >= 0)
+  { tv.tv_sec = timeout;
+    tv.tv_usec = 0;
+  }
+  else
+  { tv.tv_sec = -timeout / 1000000;
+    tv.tv_usec = -timeout % 1000000;
+  }
+  r = select(maxSocket + 1, rfd, sfd, efd, &tv);
+  if (r > 0)
+  { r = 0;
+  	for(i=0; i<numSocket; i++)
+  	  selSockets[i]=0;
+  	if (flags & SOAP_TCP_SELECT_RCV)
+  	{ for(i=0; i<numSocket; i++)
+  	  { if (FD_ISSET(s[i], rfd))
+  	    { r |= SOAP_TCP_SELECT_RCV;
+  		  selSockets[i] |= SOAP_TCP_SELECT_RCV;
+  	    }
+  	  }
+  	}
+  	if (flags & SOAP_TCP_SELECT_SND)
+  	{ for(i=0; i<numSocket; i++)
+  	  {	if (FD_ISSET(s[i], sfd))
+  	    { r |= SOAP_TCP_SELECT_SND;
+		  selSockets[i] |= SOAP_TCP_SELECT_SND;
+		}
+	  }
+	}
+  	if (flags & SOAP_TCP_SELECT_ERR)
+  	{ for(i=0; i<numSocket; i++)
+  	  {	if (FD_ISSET(s[i], efd))
+  	    { r |= SOAP_TCP_SELECT_ERR;
+		  selSockets[i] |= SOAP_TCP_SELECT_ERR;
+		}
+	  }
+	}
+  }
+  else if (r < 0)
+    soap->errnum = soap_socket_errno(s);
+  return r;
+}
+#endif
 #endif
 #endif
 
@@ -4584,6 +4738,42 @@ tcp_shutdownsocket(struct soap *soap, SOAP_SOCKET sk, int how)
 #endif
 
 /******************************************************************************/
+#if defined(SOAP_USE_MASTER_SOCKETS) && defined(WITH_IPV6)
+#define SOAP_RETURN_BIND(x) freeaddrinfo(addrinfo);return x;
+#else
+#define SOAP_RETURN_BIND(x) return x;
+#endif
+
+/******************************************************************************/
+#ifdef SOAP_USE_MASTER_SOCKETS_DEBUG
+SOAP_FMAC1
+void
+SOAP_FMAC2
+print_trace (struct soap * soap)
+{
+  void *trace[16];
+  char **messages = (char **)NULL;
+  int i, trace_size = 0;
+
+  trace_size = backtrace(trace, 16);
+  messages = backtrace_symbols(trace, trace_size);
+
+  if (messages == NULL)
+  { DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Poblem with backtrace, cannot continue;\n"));
+    return;
+  }
+
+  DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Obtained %zd stack frames.\n", trace_size));
+  for (i=0; i<trace_size; ++i)
+  { if (messages[i]==NULL) continue;
+	DBGLOG(TEST, SOAP_MESSAGE(fdebug, "	%s.\n", messages[i]));
+  }
+
+  free(messages);
+}
+#endif
+
+/******************************************************************************/
 #ifndef WITH_NOIO
 #ifndef PALM_1
 SOAP_FMAC1
@@ -4595,6 +4785,7 @@ soap_bind(struct soap *soap, const char *host, int port, int backlog)
   struct addrinfo *addrinfo = NULL;
   struct addrinfo hints;
   struct addrinfo res;
+  struct addrinfo * res2 = NULL;
   int err;
 #ifdef WITH_NO_IPV6_V6ONLY
   int unset = 0;
@@ -4635,12 +4826,66 @@ soap_bind(struct soap *soap, const char *host, int port, int backlog)
     return SOAP_INVALID_SOCKET;
   }
   res = *addrinfo;
-  memcpy(&soap->peer, addrinfo->ai_addr, addrinfo->ai_addrlen);
-  soap->peerlen = addrinfo->ai_addrlen;
+  res2 = addrinfo;
+
+#ifndef SOAP_USE_MASTER_SOCKETS
+  { int i=0;
+    res2 = &res;
+    for (i = 0, res2 = &res; res2 != NULL; res2 = res2->ai_next) {
+#ifdef __OpenBSD__
+      if(res2->ai_family==AF_INET)
+      { DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Preferring IPv4 socket to bind on OpenBSD; family: %d socktype: %d proto: %d\n", res2->ai_family, res2->ai_socktype, res2->ai_protocol));
+#else
+      if(res2->ai_family==AF_INET6)
+      { DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Preferring IPv6 socket to bind; family: %d socktype: %d proto: %d\n", res2->ai_family, res2->ai_socktype, res2->ai_protocol));
+#endif
+        res=*res2;
+        break;
+      }
+    }
+  }
+
+  memcpy(&soap->peer, res.ai_addr, res.ai_addrlen);
+  soap->peerlen = res.ai_addrlen;
   res.ai_addr = (struct sockaddr*)&soap->peer;
   res.ai_addrlen = soap->peerlen;
-  freeaddrinfo(addrinfo);
   soap->master = (int)socket(res.ai_family, res.ai_socktype, res.ai_protocol);
+  freeaddrinfo(addrinfo);
+#else
+  { int i=0;
+	res2 = &res;
+	soap->errmode = 0;
+
+	for (i=0; i<SOAP_MAX_SOCKET_NUM; i++)
+	{ if (soap_valid_socket(soap->masterSockets[i]))
+	  { soap->fclosesocket(soap, soap->masterSockets[i]);
+		soap->masterSockets[i] = SOAP_INVALID_SOCKET;
+	  }
+	}
+
+	for (i = 0, res2 = &res; res2 != NULL; res2 = res2->ai_next)
+	{ if (i >= FD_SETSIZE || (i+1)>=SOAP_MAX_SOCKET_NUM)
+	  { DBGLOG(TEST, SOAP_MESSAGE(fdebug, "getaddrinfo returned more addresses than we could use.\n"));
+		break;
+	  }
+
+	  if(res2->ai_family==AF_INET)
+	  { DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Bind: IPv4 socket to bind; family: %d socktype: %d proto: %d\n", res2->ai_family, res2->ai_socktype, res2->ai_protocol));
+	  }
+	  else if(res2->ai_family==AF_INET6)
+	  { DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Bind: IPv6 socket to bind; family: %d socktype: %d proto: %d\n", res2->ai_family, res2->ai_socktype, res2->ai_protocol));
+	  }
+      else
+      { DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Bind: UNSUPPORTED socket to bind; family: %d socktype: %d proto: %d\n", res2->ai_family, res2->ai_socktype, res2->ai_protocol));
+		continue;
+      }
+
+	  memcpy(&soap->peer, res2->ai_addr, res2->ai_addrlen);
+	  soap->peerlen = res2->ai_addrlen;
+	  res2->ai_addr = (struct sockaddr*)&(soap->peer);
+	  soap->masterSockets[i] = (int)socket(res2->ai_family, res2->ai_socktype, res2->ai_protocol);
+	  soap->master = soap->masterSockets[i];
+#endif
 #else
 #ifndef WITH_LEAN
   if ((soap->omode & SOAP_IO_UDP))
@@ -4653,7 +4898,7 @@ soap_bind(struct soap *soap, const char *host, int port, int backlog)
   if (!soap_valid_socket(soap->master))
   { soap->errnum = soap_socket_errno(soap->master);
     soap_set_receiver_error(soap, tcp_error(soap), "socket failed in soap_bind()", SOAP_TCP_ERROR);
-    return SOAP_INVALID_SOCKET;
+    SOAP_RETURN_BIND(SOAP_INVALID_SOCKET);
   }
   soap->port = port;
 #ifndef WITH_LEAN
@@ -4673,53 +4918,59 @@ soap_bind(struct soap *soap, const char *host, int port, int backlog)
   if (soap->bind_flags && setsockopt(soap->master, SOL_SOCKET, soap->bind_flags, (char*)&set, sizeof(int)))
   { soap->errnum = soap_socket_errno(soap->master);
     soap_set_receiver_error(soap, tcp_error(soap), "setsockopt failed in soap_bind()", SOAP_TCP_ERROR);
-    return SOAP_INVALID_SOCKET;
+    SOAP_RETURN_BIND(SOAP_INVALID_SOCKET);
   }
   if (((soap->imode | soap->omode) & SOAP_IO_KEEPALIVE) && (!((soap->imode | soap->omode) & SOAP_IO_UDP)) && setsockopt(soap->master, SOL_SOCKET, SO_KEEPALIVE, (char*)&set, sizeof(int)))
   { soap->errnum = soap_socket_errno(soap->master);
     soap_set_receiver_error(soap, tcp_error(soap), "setsockopt SO_KEEPALIVE failed in soap_bind()", SOAP_TCP_ERROR);
-    return SOAP_INVALID_SOCKET;
+    SOAP_RETURN_BIND(SOAP_INVALID_SOCKET);
   }
   if (setsockopt(soap->master, SOL_SOCKET, SO_SNDBUF, (char*)&len, sizeof(int)))
   { soap->errnum = soap_socket_errno(soap->master);
     soap_set_receiver_error(soap, tcp_error(soap), "setsockopt SO_SNDBUF failed in soap_bind()", SOAP_TCP_ERROR);
-    return SOAP_INVALID_SOCKET;
+    SOAP_RETURN_BIND(SOAP_INVALID_SOCKET);
   }
   if (setsockopt(soap->master, SOL_SOCKET, SO_RCVBUF, (char*)&len, sizeof(int)))
   { soap->errnum = soap_socket_errno(soap->master);
     soap_set_receiver_error(soap, tcp_error(soap), "setsockopt SO_RCVBUF failed in soap_bind()", SOAP_TCP_ERROR);
-    return SOAP_INVALID_SOCKET;
+    SOAP_RETURN_BIND(SOAP_INVALID_SOCKET);
   }
 #ifdef TCP_NODELAY
   if (!(soap->omode & SOAP_IO_UDP) && setsockopt(soap->master, IPPROTO_TCP, TCP_NODELAY, (char*)&set, sizeof(int)))
   { soap->errnum = soap_socket_errno(soap->master);
     soap_set_receiver_error(soap, tcp_error(soap), "setsockopt TCP_NODELAY failed in soap_bind()", SOAP_TCP_ERROR);
-    return SOAP_INVALID_SOCKET;
+    SOAP_RETURN_BIND(SOAP_INVALID_SOCKET);
   }
 #endif
 #endif
 #ifdef WITH_IPV6
-#ifdef WITH_IPV6_V6ONLY
-  if (setsockopt(soap->master, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&set, sizeof(int)))
+#ifdef SOAP_USE_MASTER_SOCKETS
+  // non-blocking
+  SOAP_SOCKNONBLOCK(soap->master);
+#endif
+#if defined(WITH_IPV6_V6ONLY) || defined(SOAP_USE_MASTER_SOCKETS)
+  // we are in IPv6, since we are using multiple sockets to bind, we need to set IPv6 socket to IPv6 only
+  // to disable mapped addresses, otherwise we get "Address already in use" if IPv4 is already binded
+  if (res2->ai_family==AF_INET6 && setsockopt(soap->master, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&set, sizeof(int)))
   { soap->errnum = soap_socket_errno(soap->master);
-    soap_set_receiver_error(soap, tcp_error(soap), "setsockopt set IPV6_V6ONLY failed in soap_bind()", SOAP_TCP_ERROR);
-    return SOAP_INVALID_SOCKET;
+    soap_set_receiver_error(soap, tcp_error(soap), "setsockopt IPV6_V6ONLY failed in soap_bind()", SOAP_TCP_ERROR);
+    SOAP_RETURN_BIND(SOAP_INVALID_SOCKET);
   }
 #endif
-#ifdef WITH_NO_IPV6_V6ONLY
-  if (setsockopt(soap->master, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&unset, sizeof(int)))
+#if defined(WITH_NO_IPV6_V6ONLY) && !defined(SOAP_USE_MASTER_SOCKETS)
+  if (res2->ai_family==AF_INET6 && setsockopt(soap->master, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&unset, sizeof(int)))
   { soap->errnum = soap_socket_errno(soap->master);
     soap_set_receiver_error(soap, tcp_error(soap), "setsockopt unset IPV6_V6ONLY failed in soap_bind()", SOAP_TCP_ERROR);
-    return SOAP_INVALID_SOCKET;
+    SOAP_RETURN_BIND(SOAP_INVALID_SOCKET);
   }
 #endif
   soap->errmode = 0;
-  if (bind(soap->master, res.ai_addr, (int)res.ai_addrlen))
+  if (bind(soap->master, res2->ai_addr, (int)res2->ai_addrlen))
   { soap->errnum = soap_socket_errno(soap->master);
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Could not bind to host\n"));
     soap_closesock(soap);
     soap_set_receiver_error(soap, tcp_error(soap), "bind failed in soap_bind()", SOAP_TCP_ERROR);
-    return SOAP_INVALID_SOCKET;
+    SOAP_RETURN_BIND(SOAP_INVALID_SOCKET);
   }
 #else
   soap->peerlen = sizeof(soap->peer);
@@ -4749,13 +5000,41 @@ soap_bind(struct soap *soap, const char *host, int port, int backlog)
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Could not bind to host\n"));
     soap_closesock(soap);
     soap_set_receiver_error(soap, tcp_error(soap), "listen failed in soap_bind()", SOAP_TCP_ERROR);
-    return SOAP_INVALID_SOCKET;
+    SOAP_RETURN_BIND(SOAP_INVALID_SOCKET);
   }
+#ifdef SOAP_USE_MASTER_SOCKETS
+  	  DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Binding & listening went well on socket: %d\n", i));
+  	  i+=1;
+  	}
+  	soap->curMasterSockets=i;
+  	freeaddrinfo(addrinfo);
+  }
+
+  DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Listening on %d sockets\n", soap->curMasterSockets));
+#endif
   return soap->master;
 }
 #endif
 #endif
 
+/******************************************************************************/
+#ifdef SOAP_USE_MASTER_SOCKETS
+int soap_valid_sockets_or(SOAP_SOCKET * s, int numSocket)
+{ int i=0;
+  for(i=0;i<numSocket;i++)
+    if (soap_valid_socket(s[i]))
+      return 1;
+  return 0;
+}
+
+int soap_valid_sockets_all(SOAP_SOCKET * s, int numSocket)
+{ int i=0,OK=0;
+  for(i=0;i<numSocket;i++)
+    if (soap_valid_socket(s[i]))
+      OK+=1;
+  return OK==numSocket ? 1 : 0;
+}
+#endif
 /******************************************************************************/
 #ifndef WITH_NOIO
 #ifndef PALM_1
@@ -4771,8 +5050,22 @@ soap_poll(struct soap *soap)
     if (r > 0 && (r & SOAP_TCP_SELECT_ERR))
       r = -1;
   }
-  else if (soap_valid_socket(soap->master))
-    r = tcp_select(soap, soap->master, SOAP_TCP_SELECT_SND, 0);
+#ifdef SOAP_USE_MASTER_SOCKETS
+  else if (soap_valid_sockets_or(soap->masterSockets, soap->curMasterSockets)){
+	  int sockPrepared[SOAP_MAX_SOCKET_NUM], i=0;
+	  r = tcp_multi_select(soap, soap->masterSockets, soap->curMasterSockets, sockPrepared, SOAP_TCP_SELECT_SND, 0);
+#ifdef SOAP_USE_MASTER_SOCKETS_DEBUG
+	  DBGLOG(TEST,SOAP_MESSAGE(fdebug, "Polling: tcp_multi_select; select=%d\n", r));
+	  for(i=0; i<soap->curMasterSockets; i++)
+	    if (sockPrepared[i]!=0)
+	      DBGLOG(TEST,SOAP_MESSAGE(fdebug, "Polling: tcp_multi_select; pos: %d sock: %d is %d\n", i, (int)soap->masterSockets[i], sockPrepared[i]));
+#endif
+  }
+#else
+  else if (soap_valid_socket(soap->master)){
+	  r = tcp_select(soap, soap->master, SOAP_TCP_SELECT_SND, 0);
+  }
+#endif
   else
     return SOAP_OK; /* OK when no socket! */
   if (r > 0)
@@ -4795,10 +5088,24 @@ soap_poll(struct soap *soap)
         return SOAP_OK;
   }
   else if (r < 0)
-  { if ((soap_valid_socket(soap->master) || soap_valid_socket(soap->socket)) && soap_socket_errno(soap->master) != SOAP_EINTR)
+  {
+#ifdef SOAP_USE_MASTER_SOCKETS
+    if ((soap_valid_sockets_or(soap->masterSockets, soap->curMasterSockets) || soap_valid_socket(soap->socket)))
+    { int i=0;
+      for(i=0; i<soap->curMasterSockets;i++)
+      { if (soap_socket_errno(soap->masterSockets[i]) != SOAP_EINTR)
+        { soap_set_receiver_error(soap, tcp_error(soap), "select failed in soap_poll()", SOAP_TCP_ERROR);
+          return soap->error = SOAP_TCP_ERROR;
+        }
+      }
+    }
+#else
+    if ((soap_valid_socket(soap->master) || soap_valid_socket(soap->socket)) && soap_socket_errno(soap->master) != SOAP_EINTR)
     { soap_set_receiver_error(soap, tcp_error(soap), "select failed in soap_poll()", SOAP_TCP_ERROR);
       return soap->error = SOAP_TCP_ERROR;
     }
+#endif
+
   }
   DBGLOG(TEST,SOAP_MESSAGE(fdebug, "Polling: other end down on socket=%d select=%d\n", soap->socket, r));
   return SOAP_EOF;
@@ -4816,7 +5123,8 @@ SOAP_FMAC1
 SOAP_SOCKET
 SOAP_FMAC2
 soap_accept(struct soap *soap)
-{ int n = (int)sizeof(soap->peer);
+{ int n = (int)sizeof(soap->peer), i=0;
+  SOAP_SOCKET curMaster = soap->master;
   register int err;
 #ifndef WITH_LEAN
 #ifndef WIN32
@@ -4831,26 +5139,85 @@ soap_accept(struct soap *soap)
   soap->socket = SOAP_INVALID_SOCKET;
   soap->errmode = 0;
   soap->keep_alive = 0;
+#ifdef SOAP_USE_MASTER_SOCKETS
+  if (!soap_valid_sockets_all(soap->masterSockets, soap->curMasterSockets))
+  { int cn=0;
+    soap->errnum = 0;
+    for(i=0;i<soap->curMasterSockets;i++)
+    { if (soap_valid_socket(soap->masterSockets[i]))
+      { soap->master = soap->masterSockets[i];
+        cn+=1;
+      }
+      else
+    	  soap->masterSockets[i] = SOAP_INVALID_SOCKET;
+    }
+    if (cn==0)
+    { soap_set_receiver_error(soap, tcp_error(soap), "no master sockets in soap_accept()", SOAP_TCP_ERROR);
+      return SOAP_INVALID_SOCKET;
+    }
+  }
+#else
   if (!soap_valid_socket(soap->master))
   { soap->errnum = 0;
     soap_set_receiver_error(soap, tcp_error(soap), "no master socket in soap_accept()", SOAP_TCP_ERROR);
     return SOAP_INVALID_SOCKET;
   }
+#endif
 #ifndef WITH_LEAN
   if ((soap->omode & SOAP_IO_UDP))
     return soap->socket = soap->master;
 #endif
   for (;;)
-  { if (soap->accept_timeout || soap->send_timeout || soap->recv_timeout)
+  {
+#ifdef SOAP_USE_MASTER_SOCKETS
+    if (1)
+#else
+    if (soap->accept_timeout || soap->send_timeout || soap->recv_timeout)
+#endif
     { for (;;)
       { register int r;
+#ifdef SOAP_USE_MASTER_SOCKETS
+        int selSockets[SOAP_MAX_SOCKET_NUM];
+		r = tcp_multi_select(soap, soap->masterSockets, soap->curMasterSockets, selSockets, SOAP_TCP_SELECT_ALL, 30);
+		if (r>0)
+		{ int rcvSocket=0;
+          for(i=0; i<soap->curMasterSockets; i++)
+		  { //if (selSockets[i] & SOAP_TCP_SELECT_RCV){
+			if (selSockets[i] > 0)
+			{ rcvSocket+=1;
+			  curMaster=soap->masterSockets[i];
+			  soap->lastSelectedSocket = i;
+			}
+		  }
+
+		  // iterate over sockets and select new in round robin fashion to avoid starvation
+		  if (soap->curMasterSockets>1 && rcvSocket>1)
+		  { DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Multiple sockets ready in tcp_multi_select. Cn=%d, r=%d\n", rcvSocket, r));
+			int c=(soap->lastSelectedSocket+1) % soap->curMasterSockets;
+			for(i=0; i<soap->curMasterSockets; i++)
+			{ //if (selSockets[c] & SOAP_TCP_SELECT_RCV){
+			  if (selSockets[c] > 0)
+			  { curMaster=soap->masterSockets[c];
+				soap->lastSelectedSocket = c;
+				break;
+			  }
+              c = (c+1) % soap->curMasterSockets;
+		    }
+            DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Multiple sockets ready in tcp_multi_select. Selected=%d\n", c));
+          }
+          break;
+		}
+#else
         r = tcp_select(soap, soap->master, SOAP_TCP_SELECT_ALL, soap->accept_timeout ? soap->accept_timeout : 60);
+#endif
         if (r > 0)
           break;
+#ifndef SOAP_USE_MASTER_SOCKETS
         if (!r && soap->accept_timeout)
         { soap_set_receiver_error(soap, "Timeout", "accept failed in soap_accept()", SOAP_TCP_ERROR);
           return SOAP_INVALID_SOCKET;
         }
+#endif
         if (r < 0)
         { r = soap->errnum;
           if (r != SOAP_EINTR)
@@ -4861,11 +5228,16 @@ soap_accept(struct soap *soap)
         }
       }
     }
-    if (soap->accept_timeout)
-      SOAP_SOCKNONBLOCK(soap->master)
-    else
-      SOAP_SOCKBLOCK(soap->master)
-    soap->socket = soap->faccept(soap, soap->master, (struct sockaddr*)&soap->peer, &n);
+#ifdef SOAP_USE_MASTER_SOCKETS
+      soap->master = curMaster;
+      SOAP_SOCKNONBLOCK(curMaster)
+#else
+      if (soap->accept_timeout || soap->send_timeout || soap->recv_timeout)
+        SOAP_SOCKNONBLOCK(curMaster)
+      else
+        SOAP_SOCKBLOCK(curMaster)
+#endif
+    soap->socket = soap->faccept(soap, curMaster, (struct sockaddr*)&soap->peer, &n);
     soap->peerlen = (size_t)n;
     if (soap_valid_socket(soap->socket))
     {
@@ -5105,10 +5477,21 @@ soap_done(struct soap *soap)
   }
 #endif
   if (soap->state == SOAP_INIT)
-  { if (soap_valid_socket(soap->master))
-    { soap->fclosesocket(soap, soap->master);
-      soap->master = SOAP_INVALID_SOCKET;
-    }
+  {
+#ifdef SOAP_USE_MASTER_SOCKETS
+	int i =0;
+	for (i=0; i<soap->curMasterSockets; i++)
+	{ if (soap_valid_socket(soap->masterSockets[i]))
+	  { soap->fclosesocket(soap, soap->masterSockets[i]);
+        soap->masterSockets[i] = SOAP_INVALID_SOCKET;
+	  }
+	}
+#else
+	if (soap_valid_socket(soap->master))
+	{ soap->fclosesocket(soap, soap->master);
+	  soap->master = SOAP_INVALID_SOCKET;
+	}
+#endif
   }
 #ifdef WITH_OPENSSL
   if (soap->ssl)
@@ -5806,9 +6189,17 @@ http_response(struct soap *soap, int status, size_t count)
       s = "202 Accepted";
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Status = %s\n", s));
 #ifdef WMW_RPM_IO
-    if (soap->rpmreqid || soap_valid_socket(soap->master) || soap_valid_socket(soap->socket)) /* RPM behaves as if standalone */
+#ifdef SOAP_USE_MASTER_SOCKETS
+    if (soap->rpmreqid || soap_valid_sockets_or(soap->masterSockets, soap->curMasterSockets) || soap_valid_socket(soap->socket)) /* RPM behaves as if standalone */
 #else
-    if (soap_valid_socket(soap->master) || soap_valid_socket(soap->socket)) /* standalone application (socket) or CGI (stdin/out)? */
+    if (soap->rpmreqid soap_valid_socket(soap->master) || soap_valid_socket(soap->socket)) /* RPM behaves as if standalone */
+#endif
+#else
+#ifdef SOAP_USE_MASTER_SOCKETS
+    if (soap_valid_sockets_all(soap->masterSockets, soap->curMasterSockets) || soap_valid_socket(soap->socket)) /* standalone application (socket) or CGI (stdin/out)? */
+#else
+	if (soap_valid_socket(soap->master) || soap_valid_socket(soap->socket)) /* standalone application (socket) or CGI (stdin/out)? */
+#endif
 #endif
     { sprintf(soap->tmpbuf, "HTTP/%s %s", soap->http_version, s);
       if ((err = soap->fposthdr(soap, soap->tmpbuf, NULL)))
@@ -5843,9 +6234,17 @@ http_response(struct soap *soap, int status, size_t count)
       s = "500 Internal Server Error";
     DBGLOG(TEST, SOAP_MESSAGE(fdebug, "Error %s (status=%d)\n", s, status));
 #ifdef WMW_RPM_IO
-    if (soap->rpmreqid || soap_valid_socket(soap->master) || soap_valid_socket(soap->socket)) /* RPM behaves as if standalone */
+#ifdef SOAP_USE_MASTER_SOCKETS
+    if (soap->rpmreqid || soap_valid_sockets_or(soap->masterSockets, soap->curMasterSockets) || soap_valid_socket(soap->socket)) /* RPM behaves as if standalone */
 #else
-    if (soap_valid_socket(soap->master) || soap_valid_socket(soap->socket)) /* standalone application */
+    if (soap->rpmreqid soap_valid_socket(soap->master) || soap_valid_socket(soap->socket)) /* RPM behaves as if standalone */
+#endif
+#else
+#ifdef SOAP_USE_MASTER_SOCKETS
+    if (soap_valid_sockets_all(soap->masterSockets, soap->curMasterSockets) || soap_valid_socket(soap->socket)) /* standalone application */
+#else
+	if (soap_valid_socket(soap->master) || soap_valid_socket(soap->socket)) /* standalone application */
+#endif
 #endif
     { sprintf(soap->tmpbuf, "HTTP/%s %s", soap->http_version, s);
       if ((err = soap->fposthdr(soap, soap->tmpbuf, NULL)))
@@ -8490,6 +8889,15 @@ soap_copy_stream(struct soap *copy, struct soap *soap)
   memcpy(copy->host, soap->host, sizeof(soap->host));
   memcpy(copy->endpoint, soap->endpoint, sizeof(soap->endpoint));
 #endif
+#ifdef SOAP_USE_MASTER_SOCKETS
+  { int i=0;
+	memcpy((void*)&copy->peer, (void*)&soap->peer, sizeof(soap->peer));
+	copy->master = soap->master;
+	copy->curMasterSockets = soap->curMasterSockets;
+	for(i=0; i<SOAP_MAX_SOCKET_NUM;i++)
+      copy->masterSockets[i] = soap->masterSockets[i];
+  }
+#endif
 #ifdef WITH_OPENSSL
   copy->bio = soap->bio;
   copy->ctx = soap->ctx;
@@ -8893,6 +9301,14 @@ soap_versioning(soap_init)(struct soap *soap, soap_mode imode, soap_mode omode)
   soap->level = 0;
   soap->endpoint[0] = '\0';
   soap->error = SOAP_OK;
+#ifdef  SOAP_USE_MASTER_SOCKETS
+  soap->lastSelectedSocket=0;
+  soap->curMasterSockets=0;
+  { int i=0;
+  for(i = 0; i<SOAP_MAX_SOCKET_NUM; i++)
+  	  soap->masterSockets[i] = SOAP_INVALID_SOCKET;
+  }
+#endif
 }
 #endif
 

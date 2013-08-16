@@ -62,6 +62,9 @@ int ShingleApp::CompareText(t__text * txt, t__result * res){
         switch (txt->type) {
             case TEXT:
                 return shingleAlgorithm(txt, res);
+            case PROGRAMM_LANG_CPP: ;
+            case PROGRAMM_LANG_PASCAL: ;
+            case CLEAR_TEXT: ;
 		}
 	return SOAP_ERR;
 }
@@ -155,7 +158,7 @@ void ShingleApp::stop(){
 
 
 SOAP_SOCKET queue[MAX_QUEUE]; ///< The global request queue of sockets
-int head = 0, tail = 0; ///< Queue head and tail
+unsigned int head = 0, tail = 0; ///< Queue head and tail
 COND_TYPE queue_cv; ///< used only in socket queuing
 MUTEX_TYPE queue_mx; ///< used only in socket queuing
 
@@ -165,7 +168,7 @@ int ShingleApp::run(int port){
     ShingleApp *soap_thr[MAX_THR]; ///< each thread needs a runtime context
     THREAD_TYPE tid[MAX_THR];
     SOAP_SOCKET m, s;
-    int i;
+    unsigned int i;
     m = this->bind(NULL, port, BACKLOG);    
     if (!soap_valid_socket(m)){
 		*Log << "Connection error! Port may be busy!\n";
@@ -252,7 +255,7 @@ void *DePlaguarism::process_queue(void *soap)
 
 int DePlaguarism::enqueue(SOAP_SOCKET sock) {
    int status = SOAP_OK;
-   int next;
+   unsigned int next;
    MUTEX_LOCK(queue_mx);
    next = tail + 1;
    if (next >= MAX_QUEUE)

@@ -52,7 +52,9 @@ A commercial use license is available from Genivia, Inc., contact@genivia.com
 */
 
 #define GSOAP_VERSION 20810
-//#define DEBUG
+#define WITH_IPV6 
+#define BIND_ALL_SOCKETS
+
 #ifdef WITH_SOAPDEFS_H
 # include "soapdefs.h"		/* include user-defined stuff */
 #endif
@@ -151,7 +153,7 @@ A commercial use license is available from Genivia, Inc., contact@genivia.com
 #endif
 
 #ifdef __BORLANDC__
-# ifdef _WIN32
+# ifdef __WIN32__
 #  ifndef WIN32
 #   define WIN32
 #  endif
@@ -718,6 +720,18 @@ A commercial use license is available from Genivia, Inc., contact@genivia.com
 # endif
 #endif
 
+#if defined(WITH_IPV6) && defined(BIND_ALL_SOCKETS)
+#define SOAP_USE_MASTER_SOCKETS 1
+#endif
+
+#if defined(SOAP_USE_MASTER_SOCKETS_DEBUG) && !defined(SOAP_USE_MASTER_SOCKETS)
+#undef SOAP_USE_MASTER_SOCKETS_DEBUG
+#endif
+
+#ifdef SOAP_USE_MASTER_SOCKETS_DEBUG
+#include <execinfo.h>
+#endif
+
 #ifdef WIN32
 # ifndef UNDER_CE
 #  include <io.h>
@@ -1210,7 +1224,7 @@ extern const char soap_base64o[], soap_base64i[];
 #define SOAP_DEL_METHOD			17	/* deprecated */
 #define SOAP_HEAD_METHOD		18	/* deprecated */
 #define SOAP_HTTP_METHOD		19
-#define SOAP_EOM			20
+#define SOAP_EOM			(int)20
 #define SOAP_MOE			21
 #define SOAP_HDR			22
 #define SOAP_NULL			23
@@ -1817,6 +1831,9 @@ extern "C" {
 # define SOAP_STD_API
 #endif
 
+#ifndef SOAP_MAX_SOCKET_NUM
+#define SOAP_MAX_SOCKET_NUM 10
+#endif
 struct SOAP_STD_API soap
 { short state;			/* 0 = uninitialized, 1 = initialized, 2 = copy of another soap struct */
   short version;		/* 1 = SOAP1.1 and 2 = SOAP1.2 (set automatically from namespace URI in nsmap table) */
@@ -2100,6 +2117,13 @@ struct SOAP_STD_API soap
   virtual ~soap();
 #else
   void (*dummy)(void);
+#endif
+#ifdef SOAP_USE_MASTER_SOCKETS
+  // more master soap sockets listening here
+  SOAP_SOCKET masterSockets[SOAP_MAX_SOCKET_NUM];
+  // current number of active master sockets
+  int curMasterSockets;
+  int lastSelectedSocket;
 #endif
 };
 

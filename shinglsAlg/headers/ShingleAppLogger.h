@@ -13,13 +13,13 @@ namespace DePlaguarism{
 	public:
 		ShingleAppLogger();
 		void addTrgt(ostream * src);
-		void addLogFile(char * fileName);
+        void addLogFile(const char * fileName);
 		~ShingleAppLogger();
         void flush();
-		ShingleAppLogger & operator<<(char * item);
-		ShingleAppLogger & operator<<(char item);
+        ShingleAppLogger & operator<<(const char * item);
+        ShingleAppLogger & operator<<(char item);
 		ShingleAppLogger & operator<<(float item);
-		ShingleAppLogger & operator<<(string item);
+        ShingleAppLogger & operator<<(const string & item);
 		ShingleAppLogger & operator<<(int item);
         ShingleAppLogger & operator<<(unsigned int item);
 	};
