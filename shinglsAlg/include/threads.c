@@ -1,7 +1,7 @@
 /*
-	threads.c
+    threads.c
 
-	Portable threads and locks API implementation
+    Portable threads and locks API implementation
 
 gSOAP XML Web services tools
 Copyright (C) 2000-2010, Robert van Engelen, Genivia Inc., All Rights Reserved.
@@ -62,71 +62,71 @@ extern "C" {
 
 int emulate_pthread_mutex_lock(volatile MUTEX_TYPE *mx)
 {
-  if (*mx == NULL) /* static initializer? */
-  {
-    HANDLE p = CreateMutex(NULL, FALSE, NULL);
+    if (*mx == NULL) /* static initializer? */
+    {
+        HANDLE p = CreateMutex(NULL, FALSE, NULL);
 
-    if (InterlockedCompareExchangePointer((PVOID*)mx, (PVOID)p, NULL) != NULL)
-      CloseHandle(p);
-  }
+        if (InterlockedCompareExchangePointer((PVOID*)mx, (PVOID)p, NULL) != NULL)
+            CloseHandle(p);
+    }
 
-  return WaitForSingleObject(*mx, INFINITE) == WAIT_FAILED;
+    return WaitForSingleObject(*mx, INFINITE) == WAIT_FAILED;
 }
 
 int emulate_pthread_cond_init(COND_TYPE *cv)
 {
-  cv->waiters_count_ = 0;
-  cv->signal_event_ = CreateEventEx(NULL, NULL, FALSE, EVENT_ALL_ACCESS);
-  
-  InitializeCriticalSection(&cv->waiters_count_lock_);
+    cv->waiters_count_ = 0;
+    cv->signal_event_ = CreateEventEx(NULL, NULL, FALSE, EVENT_ALL_ACCESS);
 
-  return 0;
+    InitializeCriticalSection(&cv->waiters_count_lock_);
+
+    return 0;
 }
 
 int emulate_pthread_cond_destroy(COND_TYPE *cv)
 {
-  CloseHandle(cv->signal_event_);
-  DeleteCriticalSection(&cv->waiters_count_lock_);
+    CloseHandle(cv->signal_event_);
+    DeleteCriticalSection(&cv->waiters_count_lock_);
 
-  return 0;
+    return 0;
 }
 
 int emulate_pthread_cond_signal(COND_TYPE *cv)
 {
-  int have_waiters;
+    int have_waiters;
 
-  EnterCriticalSection(&cv->waiters_count_lock_);
-  have_waiters = cv->waiters_count_ > 0;
-  LeaveCriticalSection(&cv->waiters_count_lock_);
+    EnterCriticalSection(&cv->waiters_count_lock_);
+    have_waiters = cv->waiters_count_ > 0;
+    LeaveCriticalSection(&cv->waiters_count_lock_);
 
-  if (have_waiters)
-    return SetEvent(cv->signal_event_) == 0;
+    if (have_waiters)
+        return SetEvent(cv->signal_event_) == 0;
 
-  return 0;
+    return 0;
 }
 
 int emulate_pthread_cond_wait(COND_TYPE *cv, MUTEX_TYPE *cs)
 {
-  int result;
+    int result;
 
-  EnterCriticalSection(&cv->waiters_count_lock_);
-  cv->waiters_count_++;
-  LeaveCriticalSection(&cv->waiters_count_lock_);
-
-  ReleaseMutex(*cs);
-
-  result = (WaitForSingleObject(cv->signal_event_, INFINITE) == WAIT_FAILED);
-
-  if (!result)
-  {
     EnterCriticalSection(&cv->waiters_count_lock_);
-    cv->waiters_count_--;
+    cv->waiters_count_++;
     LeaveCriticalSection(&cv->waiters_count_lock_);
 
-    result = (WaitForSingleObject(*cs, INFINITE) == WAIT_FAILED);
-  }
+    ReleaseMutex(*cs);
 
-  return result;
+    result = (WaitForSingleObject(cv->signal_event_, INFINITE) == WAIT_FAILED);
+
+    if (!result)
+    {
+        EnterCriticalSection(&cv->waiters_count_lock_);
+        cv->waiters_count_--;
+        LeaveCriticalSection(&cv->waiters_count_lock_);
+
+        result = (WaitForSingleObject(*cs, INFINITE) == WAIT_FAILED);
+    }
+
+    return result;
 }
 
 #ifdef __cplusplus

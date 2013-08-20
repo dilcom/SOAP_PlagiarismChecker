@@ -10,7 +10,7 @@ namespace DePlaguarism{
     private:
         static DbEnv * env;
         static Db * dbSrcHashes,
-                  * dbSrcDocs;
+        * dbSrcDocs;
         static unsigned int docNumber;
         static MUTEX_TYPE mtx;///< crossplatform mutex
         void saveDocNumber();

@@ -1,24 +1,24 @@
 ﻿#include "../headers/Shingles.h"
 #ifdef _WIN32
-    #pragma comment (lib, "../lib/libdb53.lib")
+#pragma comment (lib, "../lib/libdb53.lib")
 #endif
 using namespace std;
 using namespace DePlaguarism;
 
 wstring * utf8to16(char * src){
-	vector <unsigned short> utf16result;
-	utf8::utf8to16(src, src + strlen(src), back_inserter(utf16result));
-	wstring * ws = new wstring(utf16result.begin(), utf16result.end());
-	return ws;
+    vector <unsigned short> utf16result;
+    utf8::utf8to16(src, src + strlen(src), back_inserter(utf16result));
+    wstring * ws = new wstring(utf16result.begin(), utf16result.end());
+    return ws;
 }
 
 char * utf16to8(wstring src){
-	char * utf8result = new char[src.length() * 2 + 2];
-	vector <unsigned short> utf16src;
-	for (unsigned int i = 0; i < src.length(); i++)
-		utf16src.push_back(src[i]);
-	*(utf8::utf16to8(utf16src.begin(), utf16src.end(), utf8result)) = '\0';
-	return utf8result;
+    char * utf8result = new char[src.length() * 2 + 2];
+    vector <unsigned short> utf16src;
+    for (unsigned int i = 0; i < src.length(); i++)
+        utf16src.push_back(src[i]);
+    *(utf8::utf16to8(utf16src.begin(), utf16src.end(), utf8result)) = '\0';
+    return utf8result;
 }
 
 void wstrToLower(wstring * ws){
@@ -33,77 +33,77 @@ Shingle::Shingle(void)
 {
 }
 
-Shingle::Shingle(t__text * inText)
+Shingle::Shingle(const t__text & inText)
 {
-	//canonization
-    textData = new t__text(*inText);
-	
-    wstring *ptrtxt = utf8to16 (inText->streamData);
+    //canonization
+    textData = new t__text(inText);
+
+    wstring *ptrtxt = utf8to16 (textData->streamData);
     wstring txt = *ptrtxt;
-	wstrToLower(&txt);
-	wchar_t *buff = new wchar_t[txt.length() + 1]; 
+    wstrToLower(&txt);
+    wchar_t *buff = new wchar_t[txt.length() + 1];
     size_t posTxt = 0,
-		posBuff = 0,
-		wordCount = 0,
-		curWordLength = 0,
-		lastSpacePos = -1;
-	size_t txtLength = txt.length();
-	while ( posTxt < txtLength && !isAlph( txt[posTxt] )) 
-		posTxt++;
-	while (posTxt < txtLength){
+            posBuff = 0,
+            wordCount = 0,
+            curWordLength = 0,
+            lastSpacePos = -1;
+    size_t txtLength = txt.length();
+    while ( posTxt < txtLength && !isAlph( txt[posTxt] ))
+        posTxt++;
+    while (posTxt < txtLength){
         if (txt[posTxt] == L' ' || txt[posTxt] == L'\n'){
-			if (curWordLength > MIN_WORD_LENGTH ){
-				buff[posBuff] = L' ';
-				lastSpacePos = posBuff;
-				curWordLength = 0;
-				wordCount++;
-				posBuff++;
-			}
-			else{
-				posBuff = lastSpacePos + 1;
-				curWordLength = 0;
-			}
+            if (curWordLength > MIN_WORD_LENGTH ){
+                buff[posBuff] = L' ';
+                lastSpacePos = posBuff;
+                curWordLength = 0;
+                wordCount++;
+                posBuff++;
+            }
+            else{
+                posBuff = lastSpacePos + 1;
+                curWordLength = 0;
+            }
         }
-		if (isAlph(txt[posTxt])){
-				buff[posBuff] = txt[posTxt];
-				curWordLength++;
-				posBuff++;
-			}
-		posTxt++;
-	}
-	buff[posBuff] = L'\0';
-	//end of canonization
-	if (posBuff != 0)
-		wordCount += 1;
+        if (isAlph(txt[posTxt])){
+            buff[posBuff] = txt[posTxt];
+            curWordLength++;
+            posBuff++;
+        }
+        posTxt++;
+    }
+    buff[posBuff] = L'\0';
+    //end of canonization
+    if (posBuff != 0)
+        wordCount += 1;
     int * words = new int[wordCount + 10];
-	words[0] = 0;
+    words[0] = 0;
     unsigned int posWords = 1,
-        shingleCount = max(1, (int)(wordCount - WORDS_EACH_SHINGLE + 1));
-	count = min(shingleCount, MAX_SHINGLE_PER_TEXT);
+            shingleCount = max(1, (int)(wordCount - WORDS_EACH_SHINGLE + 1));
+    count = min(shingleCount, MAX_SHINGLE_PER_TEXT);
     for (size_t i = 0; i < posBuff; i++){
-		if (buff[i] == ' ')
-			words[posWords++] = i;
-	}
-	words[posWords] = posBuff;
-	unsigned int *crcs = new unsigned int[shingleCount];
+        if (buff[i] == ' ')
+            words[posWords++] = i;
+    }
+    words[posWords] = posBuff;
+    unsigned int *crcs = new unsigned int[shingleCount];
     for (unsigned int i = 0; i < shingleCount; i++){
         crcs[i] = Crc32(reinterpret_cast<const unsigned char*>(buff + words[i]), (words[i + min(WORDS_EACH_SHINGLE, (unsigned int)wordCount)] - words[i])*sizeof(wchar_t));
-	}
-	if (shingleCount > MAX_SHINGLE_PER_TEXT)
+    }
+    if (shingleCount > MAX_SHINGLE_PER_TEXT)
         for (unsigned int i = 0; i < count; i++){
-			unsigned int minData = crcs[0],
-				minI = 0;
+            unsigned int minData = crcs[0],
+                    minI = 0;
             for (unsigned int j = 1; j < shingleCount; j++)
-				if (crcs[j] < minData){
-					minData = crcs[j];
-					minI = j;
-				}
-				crcs[minI] = -1;
-				data[i] = minData;
-		}
-	else
+                if (crcs[j] < minData){
+                    minData = crcs[j];
+                    minI = j;
+                }
+            crcs[minI] = -1;
+            data[i] = minData;
+        }
+    else
         for (unsigned int i = 0; i < count; i++)
-			data[i] = crcs[i];
+            data[i] = crcs[i];
     time_t a;
     time(&a);
     header.dateTime = *(localtime(&a));
@@ -112,24 +112,24 @@ Shingle::Shingle(t__text * inText)
     header.data_len = strlen(textData->streamData);
     header.textName_len = strlen(textData->name);
     header.type = textData->type;
-	delete[] words;
+    delete[] words;
     delete ptrtxt;
-	delete[] crcs;
-	delete[] buff;
+    delete[] crcs;
+    delete[] buff;
 }
 
 
 Shingle::~Shingle(void)
-{    
+{
     delete textData;
 }
 
 const unsigned int * Shingle::getData(){
-	return this->data;
+    return this->data;
 }
 
 unsigned int Shingle::getCount(){
-	return count;
+    return count;
 }
 
 const t__text & Shingle::getText(){
@@ -138,11 +138,11 @@ const t__text & Shingle::getText(){
 
 
 void Shingle::save(DataSrcAbstract *targetDataSource){
-	try{		
+    try{
         targetDataSource->save(data, count, header, textData);
     }
-	catch(...){
-		//TODO exceptions processing
+    catch(...){
+        //TODO exceptions processing
     }
 }
 

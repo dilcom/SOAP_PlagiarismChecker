@@ -15,15 +15,19 @@ using namespace DePlaguarism;
 using namespace std;
 
 int http_get(struct soap *soap); ///< it`s being used to responce with wsdl when needed
-
+void sigpipe_handler(int x) { }
 
 int main(int argc, char* argv[])
 {
     THREAD_TYPE tid;
     setlocale(LC_ALL, "ru_RU.UTF-8");
     ShingleApp *srv = new ShingleApp();
+
     soap_set_imode(srv, SOAP_C_UTFSTRING);
     soap_set_omode(srv, SOAP_C_UTFSTRING);
+    //srv->accept_flags = SO_NOSIGPIPE;  /* some systems accept this */
+    srv->socket_flags = MSG_NOSIGNAL;  /* others need this */
+    //signal(SIGPIPE, sigpipe_handler);  /* and when the above are not supported, we use a sigpipe handler */
     unsigned threadID;
     THREAD_CREATE(&tid, runService, (void*)srv, threadID);
     srv->log() << "Application started!\n";
@@ -43,25 +47,25 @@ int main(int argc, char* argv[])
 
 int http_get(struct soap *soap)
 {
-   FILE *fd = NULL;
-   char *s = strchr(soap->path, '?');
-   if (!s || strcmp(s, "?wsdl"))
-      return SOAP_GET_METHOD;
-   fd = fopen("shingle.wsdl", "rb"); // open WSDL file to copy
-   if (!fd)
-      return 404; // return HTTP not found error
-   soap->http_content = "text/xml"; // HTTP header with text/xml content
-   soap_response(soap, SOAP_FILE);
-   while (true) {
-      size_t r = fread(soap->tmpbuf, 1, sizeof(soap->tmpbuf), fd);
-      if (!r)
-         break;
-      if (soap_send_raw(soap, soap->tmpbuf, r))
-         break; // can't send, but little we can do about that
-   }
-   fclose(fd);
-   soap_end_send(soap);
-   return SOAP_OK;
+    FILE *fd = NULL;
+    char *s = strchr(soap->path, '?');
+    if (!s || strcmp(s, "?wsdl"))
+        return SOAP_GET_METHOD;
+    fd = fopen("shingle.wsdl", "rb"); // open WSDL file to copy
+    if (!fd)
+        return 404; // return HTTP not found error
+    soap->http_content = "text/xml"; // HTTP header with text/xml content
+    soap_response(soap, SOAP_FILE);
+    while (true) {
+        size_t r = fread(soap->tmpbuf, 1, sizeof(soap->tmpbuf), fd);
+        if (!r)
+            break;
+        if (soap_send_raw(soap, soap->tmpbuf, r))
+            break; // can't send, but little we can do about that
+    }
+    fclose(fd);
+    soap_end_send(soap);
+    return SOAP_OK;
 }
 
 
@@ -79,5 +83,5 @@ void * runService(void * app)
         srv->log() << "Emergency shoutdown! Waiting 10 seconds.\n";
         SLEEP(10000);
     }
-	return NULL;
+    return NULL;
 }

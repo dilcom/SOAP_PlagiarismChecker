@@ -1,7 +1,7 @@
 /*
-	threads.h
+    threads.h
 
-	Portable threads and locks API
+    Portable threads and locks API
 
 gSOAP XML Web services tools
 Copyright (C) 2000-2010, Robert van Engelen, Genivia Inc., All Rights Reserved.
@@ -118,8 +118,8 @@ The threads.h and threads.c code define the following portable API:
 # define COND_WAIT(x,y)		emulate_pthread_cond_wait(&(x), &(y))
 typedef struct
 { UINT waiters_count_;
-  CRITICAL_SECTION waiters_count_lock_;
-  HANDLE signal_event_;
+    CRITICAL_SECTION waiters_count_lock_;
+    HANDLE signal_event_;
 } COND_TYPE;
 #ifdef __cplusplus
 extern "C" {

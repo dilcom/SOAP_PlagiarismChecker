@@ -41,7 +41,6 @@ DataSrcRedisCluster::DataSrcRedisCluster(const char * ipAddress, int port, bool 
         }
         catch(...) {
             redisFree(mainClient);
-            freeReplyObject(clusterInfo);
             throw("Cluster init error!");
         }
         freeReplyObject(clusterInfo);
@@ -127,7 +126,7 @@ void DataSrcRedisCluster::initializeCluster(std::string * configString, bool rem
         } else {
             if (confTokens[2].find("myself") == std::string::npos)
                 clientsCount -= 1;
-                ///< decrement clientsCount because we are faced with slave node and it`s not clients[0]
+            ///< decrement clientsCount because we are faced with slave node and it`s not clients[0]
         }
     }
 }
@@ -183,7 +182,7 @@ void DataSrcRedisCluster::reinitializeCluster(){
                 }
 
                 if (clients[0] != NULL)
-                        redisFree(clients[0]);
+                    redisFree(clients[0]);
                 clients[0] = tmp;
             }
         }
@@ -280,7 +279,7 @@ redisReply * DataSrcRedisCluster::redisCommandWithReply(redisContext *c, const c
 void DataSrcRedisCluster::save(const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt){
     ///< 0. we need new document number
     unsigned int docNumber;
-    bool flag = false;    
+    bool flag = false;
     do {
         flag = false;
         try {
@@ -482,6 +481,6 @@ uint16_t DePlaguarism::crc16(const char *buf, int len) {
     int counter;
     uint16_t crc = 0;
     for (counter = 0; counter < len; counter++)
-            crc = (crc<<8) ^ crc16tab[((crc>>8) ^ *buf++)&0x00FF];
+        crc = (crc<<8) ^ crc16tab[((crc>>8) ^ *buf++)&0x00FF];
     return crc;
 }

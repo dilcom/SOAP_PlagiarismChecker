@@ -52,4 +52,4 @@ SOURCES += ../../src/ShingleApp.cpp \
     ../../src/datasrcrediscluster.cpp
 
 unix: LIBS += -L/usr/local/lib -lhiredis
-unix: LIBS += -ldb_cxx-5.3
+unix: LIBS += -ldb_cxx

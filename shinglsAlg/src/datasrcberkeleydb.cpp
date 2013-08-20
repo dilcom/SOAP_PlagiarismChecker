@@ -89,7 +89,7 @@ void DataSrcBerkeleyDB::save(const unsigned int * hashes, unsigned int count, Do
     }
     ///< 2. localDocNumber->document
     int length = sizeof(header) + header.authorGroup_len + header.authorName_len + header.data_len
-        + header.textName_len;
+            + header.textName_len;
     char * textDocData = new char[length];
     char * pointer = textDocData;
     memcpy((void*)pointer, &(header), sizeof(DocHeader));
@@ -119,6 +119,7 @@ void DataSrcBerkeleyDB::saveDocNumber(){
     dbSrcDocs->cursor(NULL, &cursorp, DB_WRITECURSOR);
     cursorp->put(&keyDocNum, &dataDocNum, DB_KEYFIRST);
     cursorp->close();
+    std::cout << docNumber << "\n";
 }
 
 void DataSrcBerkeleyDB::getDocument(unsigned int docNumber, t__text ** trgtPtr, soap * parent){
@@ -150,12 +151,14 @@ void DataSrcBerkeleyDB::getDocument(unsigned int docNumber, t__text ** trgtPtr, 
     pointer += header.data_len;
 
     trgt->name = reinterpret_cast<char*>(soap_malloc(parent, header.textName_len + 1));
-    memcpy(trgt->name, pointer, header.textName_len);;
+    memcpy(trgt->name, pointer, header.textName_len);
     trgt->name[header.textName_len] = '\0';
     pointer += header.textName_len;
 
     char * date = asctime(&(header.dateTime));
-    trgt->date = reinterpret_cast<char*>(soap_malloc(parent, strlen(date) + 1));
-    strcpy(trgt->date, date);
+    size_t dateLen = strlen(date);
+    trgt->date = reinterpret_cast<char*>(soap_malloc(parent, dateLen + 1));
+    memcpy(trgt->date, date, dateLen);
+    trgt->date[dateLen] = '\0';
     cursorp->close();
 }
