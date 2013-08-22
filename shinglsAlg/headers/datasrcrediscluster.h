@@ -1,10 +1,9 @@
 #ifndef DATASRCREDISCLUSTER_H
 #define DATASRCREDISCLUSTER_H
-#include "./datasrcberkeleydb.h"
+#include "./datasrcabstract.h"
+#include "../include/hiredis.h"
 
 namespace DePlaguarism {
-
-    enum dataSrc__t {DATA_SRC_BDB = 0, DATA_SRC_REDIS_CLUSTER = 1};
 
     uint16_t crc16(const char *buf, int len);
     std::vector<std::string> *split(const std::string &s, char delim, std::vector<std::string> *elems);

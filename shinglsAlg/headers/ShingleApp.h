@@ -43,9 +43,7 @@ namespace DePlaguarism{
         int shingleAlgorithm(t__text * txt, result *res); ///< compare two texts using algorithm based on shingles
         bool flagContinue;///< setting to false will make application to stop (only after accepting one more connection)
         bool mainEx;///< setting to true will make instance to close DB handlers and free memory allocated for them
-        static dataSrc__t dbType;
         DePlaguarism::DataSrcAbstract * dataSource; ///< represents a db
-
     public:
         void loadDB();///< initializes dataSorces
         void closeDB();///< closes dataSorces

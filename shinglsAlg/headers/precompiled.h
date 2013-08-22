@@ -33,7 +33,7 @@
 #include <map>
 #include <algorithm>
 #include <cstdio>
-#include "../include/hiredis.h"
 #include <sstream>
+#include "../include/threads.h"
 
 #endif // PRECOMPILED_H

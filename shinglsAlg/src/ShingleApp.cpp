@@ -5,8 +5,6 @@ bool DePlaguarism::txtValid(t__text * a){
     return (a->streamData && a->authorGroup && a->authorName && a->name);
 }
 
-
-dataSrc__t ShingleApp::dbType;
 string ShingleApp::nowToStr(){
     string res;
     time_t a;
@@ -35,7 +33,6 @@ void ShingleApp::setChild(){
 
 ShingleApp::ShingleApp(void)
 {
-    dbType = DB_TYPE;
     setMain();
     Log = new ShingleAppLogger();
     //Log->addLogFile("log.txt");
@@ -290,14 +287,11 @@ void ShingleApp::loadDB() {
     do {
         flag = false;
         try{
-            switch (this->dbType){
-            case DATA_SRC_BDB:
-                dataSource = new DataSrcBerkeleyDB(ENV_NAME, HASH_DB_NAME, DOCS_DB_NAME, mainEx);
-                break;
-            case DATA_SRC_REDIS_CLUSTER:
-                dataSource = new DataSrcRedisCluster(REDIS_MAIN_CLIENT_ADDRESS, REDIS_MAIN_CLIENT_PORT, mainEx);
-                break;
-            }
+#ifdef BERKELEYDB
+            dataSource = new DataSrcBerkeleyDB(ENV_NAME, HASH_DB_NAME, DOCS_DB_NAME, mainEx);
+#else
+            dataSource = new DataSrcRedisCluster(REDIS_MAIN_CLIENT_ADDRESS, REDIS_MAIN_CLIENT_PORT, mainEx);
+#endif
         }
         catch (...){
             flag = true;

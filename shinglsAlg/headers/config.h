@@ -3,10 +3,15 @@
 
 ///< crossplatform define
 
-#include "datasrcrediscluster.h"
+#ifdef BERKELEYDB
+    #include "datasrcberkeleydb.h"
+#else
+    #include "datasrcrediscluster.h"
+#endif
 
 
 namespace DePlaguarism{
+
     //Shingle.h
     const unsigned int MAX_SHINGLE_PER_TEXT = 120; ///< max Shingles in text
     const unsigned int WORDS_EACH_SHINGLE = 4; ///< words in each Shingle
@@ -16,8 +21,7 @@ namespace DePlaguarism{
     const float THRESHOLD_TO_SAVE = 0.6; ///< maximum value from which new texts won`t be added to the database
     const unsigned int DOCUMENTS_IN_RESPONSE = 10;///< maximum count of documents which will be responced to client
     const unsigned int CONNECTIONS_BEFORE_RESET = 50; ///< frequency between soap->destroy calls
-    //const enum dataSrc__t DB_TYPE = DATA_SRC_BDB;
-    const enum dataSrc__t DB_TYPE = DATA_SRC_REDIS_CLUSTER;
+
     const char REDIS_MAIN_CLIENT_ADDRESS [] = "127.0.0.1";
     const unsigned int REDIS_MAIN_CLIENT_PORT = 6379;
     const char GSOAP_IF []= "127.0.0.1"; ///< interface for gsoap
