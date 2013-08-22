@@ -1,7 +1,7 @@
 #ifndef SHINGLES_H
 #define SHINGLES_H
 
-#include "datasrcrediscluster.h"
+#include "config.h"
 using namespace DePlaguarism;
 
 namespace DePlaguarism{

@@ -35,7 +35,7 @@ void ShingleApp::setChild(){
 
 ShingleApp::ShingleApp(void)
 {
-    dbType = DATA_SRC_BDB;
+    dbType = DB_TYPE;
     setMain();
     Log = new ShingleAppLogger();
     //Log->addLogFile("log.txt");
@@ -169,7 +169,7 @@ int ShingleApp::run(int port){
     THREAD_TYPE tid[MAX_THR];
     SOAP_SOCKET m, s;
     unsigned int i;
-    m = this->bind("::1", port, BACKLOG);
+    m = this->bind(GSOAP_IF, port, BACKLOG);
     if (!soap_valid_socket(m)){
         *Log << "Connection error! Port may be busy!\n";
         return 1;
@@ -295,7 +295,7 @@ void ShingleApp::loadDB() {
                 dataSource = new DataSrcBerkeleyDB(ENV_NAME, HASH_DB_NAME, DOCS_DB_NAME, mainEx);
                 break;
             case DATA_SRC_REDIS_CLUSTER:
-                dataSource = new DataSrcRedisCluster("127.0.0.1", 6379, mainEx);
+                dataSource = new DataSrcRedisCluster(REDIS_MAIN_CLIENT_ADDRESS, REDIS_MAIN_CLIENT_PORT, mainEx);
                 break;
             }
         }

@@ -317,7 +317,7 @@ void DataSrcRedisCluster::save(const unsigned int * hashes, unsigned int count, 
                 sprintf(tmp, "hash:%d", hashes[i]);
                 int len = strlen(tmp);
                 redisContext * context = clients[slotMap[crc16(tmp, len) & 0x3fff]];
-                redisCommandWithoutReply(context, "sadd %b %b", tmp, len, &docNumber, sizeof(docNumber));
+                redisCommandWithoutReply(context, "sadd %b %d", tmp, len, docNumber);
             }
             ///< 2.2. docNumber->document
             redisCommandWithoutReply(docContext, "hset %b textName %b", key, (size_t) lenDoc, txt->name, header.textName_len); ///< textName is a name of field in hash
@@ -413,9 +413,16 @@ std::vector<unsigned int> * DataSrcRedisCluster::getIdsByHashes(const unsigned i
                 int k = slotMap[crc16(tmp, strlen(tmp)) & 0x3fff];
                 redisContext * client = clients[k];
                 redisReply * rep = redisCommandWithReply(client, "smembers %s", tmp);
-                for (unsigned int j = 0; j < rep->elements; j += 1){
-                    redisReply * el = rep->element[j];
-                    result->push_back(*((unsigned int *)(el->str)));
+                int elems = rep->elements;
+                for (unsigned int j = 0; j < elems; j += 1){
+                    unsigned int tmpInt = 0;
+                    char * tmpStr = rep->element[j]->str;
+                    while (*tmpStr != '\0') {
+                        tmpInt *= 10;
+                        tmpInt += *tmpStr - '0';
+                        tmpStr += 1;
+                    }
+                    result->push_back(tmpInt);
                 }
                 freeReplyObject(rep);
             }
