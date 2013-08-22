@@ -26,9 +26,13 @@ II. Redis Cluster
 4) make
 
 5.0) configure it (readme here https://github.com/antirez/redis), enable cluster mode and choose a port
+
 5.1) my config here http://db.tt/vRSLkKCJ - only 1 node, if you need more, copy it and replace 6379 -> any_port
+
 5.2) build hiredis
+
   5.2.1) cd ./deps/hiredis
+  
   5.2.2) make & make install  ! or use checkinstall or something like that
 
 6) ./src/redis-server configFileName.conf
