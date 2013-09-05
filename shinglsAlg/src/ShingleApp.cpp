@@ -105,7 +105,7 @@ void ShingleApp::findSimilar(t__text * txt){
     catch(...){
         *Log << "!!!ERROR in ShingleApp::findSimilar\n";
     }
-    if (Config::getInstance().LOG_EVERY_FCALL){
+    if (DefaultValues::LOG_EVERY_FCALL){
         *Log << "ShingleApp::findSimilar execution took " << (int)(time + clock()) << "msec\n";
     }
 
@@ -130,7 +130,7 @@ int ShingleApp::shingleAlgorithm(t__text * txt, result *res){
         }
     }
     res->errCode = res->arrayOfTexts.empty() ? STATE_NO_SIMILAR : STATE_OK;
-    if (Config::getInstance().LOG_EVERY_FCALL){
+    if (DefaultValues::LOG_EVERY_FCALL){
         *Log << "Request processed in " << (int)(time + clock()) << "msec\n";
         *Log << "Text size: " << (int)(sizeof(char)*strlen(txt->streamData)) << " bytes\n\n";
     }
@@ -154,7 +154,7 @@ void ShingleApp::stop(){
 }
 
 
-SOAP_SOCKET * queue; ///< The global request queue of sockets
+SOAP_SOCKET queue[DefaultValues::MAX_QUEUE]; ///< The global request queue of sockets
 unsigned int head = 0, tail = 0; ///< Queue head and tail
 COND_TYPE queue_cv; ///< used only in socket queuing
 MUTEX_TYPE queue_mx; ///< used only in socket queuing
@@ -162,12 +162,11 @@ MUTEX_TYPE queue_mx; ///< used only in socket queuing
 
 int ShingleApp::run(int port){
     flagContinue = true; ///< once turned to false it will stop an application after next socket accept
-    ShingleApp *soap_thr[Config::getInstance().MAX_THR]; ///< each thread needs a runtime context
-    THREAD_TYPE tid[Config::getInstance().MAX_THR];
-    queue = new SOAP_SOCKET(Config::getInstance().MAX_QUEUE);
+    ShingleApp *soap_thr[DefaultValues::MAX_THR]; ///< each thread needs a runtime context
+    THREAD_TYPE tid[DefaultValues::MAX_THR];
     SOAP_SOCKET m, s;
     unsigned int i;
-    m = this->bind(Config::getInstance().GSOAP_IF.c_str(), port, Config::getInstance().BACKLOG);
+    m = this->bind(Config::getInstance().GSOAP_IF.c_str(), port, DefaultValues::BACKLOG);
     if (!soap_valid_socket(m)){
         *Log << "Connection error! Port may be busy!\n";
         return 1;
@@ -176,7 +175,7 @@ int ShingleApp::run(int port){
     COND_SETUP(queue_cv);
     MUTEX_SETUP(queue_mx);
     ///< 1. we create runtime contexts for threads and run them
-    for (i = 0; i < Config::getInstance().MAX_THR; i++) {
+    for (i = 0; i < DefaultValues::MAX_THR; i++) {
         unsigned threadID;
         soap_thr[i] = new ShingleApp(*this);
         soap_thr[i]->setChild();
@@ -209,13 +208,13 @@ int ShingleApp::run(int port){
     }
 
     ///< 3. Now we want to stop all the threads, so lets fill the queue with invalid sockets and threads will stop itself
-    for (i = 0; i < Config::getInstance().MAX_THR; i++) {
+    for (i = 0; i < DefaultValues::MAX_THR; i++) {
         while (enqueue(SOAP_INVALID_SOCKET) == SOAP_EOM)
             SLEEP(1);
         SLEEP(10);
     }
     ///< 4. Waiting for all the threads to end
-    for (i = 0; i < Config::getInstance().MAX_THR; i++) {
+    for (i = 0; i < DefaultValues::MAX_THR; i++) {
         *Log << "Waiting for thread " << i <<" to terminate... ";
         THREAD_JOIN(tid[i]);
         *Log << "terminated\n";
@@ -223,7 +222,6 @@ int ShingleApp::run(int port){
     }
     COND_CLEANUP(queue_cv);
     MUTEX_CLEANUP(queue_mx);
-    delete[] queue;
     return 0;
 }
 
@@ -257,7 +255,7 @@ int DePlaguarism::enqueue(SOAP_SOCKET sock) {
     unsigned int next;
     MUTEX_LOCK(queue_mx);
     next = tail + 1;
-    if (next >= Config::getInstance().MAX_QUEUE)
+    if (next >= DefaultValues::MAX_QUEUE)
         next = 0;
     if (next == head)
         status = SOAP_EOM;
@@ -277,7 +275,7 @@ SOAP_SOCKET DePlaguarism::dequeue() {
     while (head == tail)
         COND_WAIT(queue_cv, queue_mx);
     sock = queue[head++];
-    if (head >= Config::getInstance().MAX_QUEUE)
+    if (head >= DefaultValues::MAX_QUEUE)
         head = 0;
     MUTEX_UNLOCK(queue_mx);
     return sock;

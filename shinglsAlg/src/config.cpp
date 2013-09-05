@@ -33,9 +33,6 @@ void Config::loadConfig(const char * configName) {
         CONNECTIONS_BEFORE_RESET = conf.lookup("connections_before_reset");
         REDIS_MAIN_CLIENT_PORT = conf.lookup("redis_port");
         SERVICE_PORT = conf.lookup("port");
-        BACKLOG = conf.lookup("backlog");
-        MAX_THR = conf.lookup("thread_count");
-        MAX_QUEUE = conf.lookup("queue_size");
         REDIS_MAIN_CLIENT_ADDRESS = (std::string)conf.lookup("redis_address").c_str();
         GSOAP_IF = conf.lookup("address").c_str();
         HASH_DB_NAME = conf.lookup("hash_db_name").c_str();
@@ -50,9 +47,6 @@ void Config::loadConfig(const char * configName) {
         REDIS_MAIN_CLIENT_PORT = DePlaguarism::DefaultValues::REDIS_MAIN_CLIENT_PORT;
         GSOAP_IF = DePlaguarism::DefaultValues::GSOAP_IF;
         SERVICE_PORT = DePlaguarism::DefaultValues::SERVICE_PORT; 
-        BACKLOG = DePlaguarism::DefaultValues::BACKLOG;	
-        MAX_THR = DePlaguarism::DefaultValues::MAX_THR; 
-        MAX_QUEUE = DePlaguarism::DefaultValues::MAX_QUEUE;
         HASH_DB_NAME = DePlaguarism::DefaultValues::HASH_DB_NAME;
         DOCS_DB_NAME = DePlaguarism::DefaultValues::DOCS_DB_NAME;
         ENV_NAME = DePlaguarism::DefaultValues::ENV_NAME;

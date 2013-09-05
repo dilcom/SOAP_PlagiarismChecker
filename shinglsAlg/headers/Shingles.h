@@ -9,7 +9,7 @@ namespace DePlaguarism{
     class Shingle
     {
     protected:
-        unsigned int * data; ///< array with crc32 hashes from given text
+        unsigned int data[DefaultValues::MAX_SHINGLE_PER_TEXT]; ///< array with crc32 hashes from given text
         unsigned int count; ///< count of elements in data field
         DocHeader header;
         t__text *textData;
