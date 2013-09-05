@@ -37,6 +37,7 @@ Shingle::Shingle(const t__text & inText)
 {
     //canonization
     textData = new t__text(inText);
+    data = new unsigned int(Config::getInstance().MAX_SHINGLE_PER_TEXT);
 
     wstring *ptrtxt = utf8to16 (textData->streamData);
     wstring txt = *ptrtxt;
@@ -52,7 +53,7 @@ Shingle::Shingle(const t__text & inText)
         posTxt++;
     while (posTxt < txtLength){
         if (txt[posTxt] == L' ' || txt[posTxt] == L'\n'){
-            if (curWordLength > MIN_WORD_LENGTH ){
+            if (curWordLength > Config::getInstance().MIN_WORD_LENGTH ){
                 buff[posBuff] = L' ';
                 lastSpacePos = posBuff;
                 curWordLength = 0;
@@ -78,8 +79,8 @@ Shingle::Shingle(const t__text & inText)
     int * words = new int[wordCount + 10];
     words[0] = 0;
     unsigned int posWords = 1,
-            shingleCount = max(1, (int)(wordCount - WORDS_EACH_SHINGLE + 1));
-    count = min(shingleCount, MAX_SHINGLE_PER_TEXT);
+            shingleCount = max(1, (int)(wordCount - Config::getInstance().WORDS_EACH_SHINGLE + 1));
+    count = min(shingleCount, Config::getInstance().MAX_SHINGLE_PER_TEXT);
     for (size_t i = 0; i < posBuff; i++){
         if (buff[i] == ' ')
             words[posWords++] = i;
@@ -87,9 +88,9 @@ Shingle::Shingle(const t__text & inText)
     words[posWords] = posBuff;
     unsigned int *crcs = new unsigned int[shingleCount];
     for (unsigned int i = 0; i < shingleCount; i++){
-        crcs[i] = Crc32(reinterpret_cast<const unsigned char*>(buff + words[i]), (words[i + min(WORDS_EACH_SHINGLE, (unsigned int)wordCount)] - words[i])*sizeof(wchar_t));
+        crcs[i] = Crc32(reinterpret_cast<const unsigned char*>(buff + words[i]), (words[i + min(Config::getInstance().WORDS_EACH_SHINGLE, (unsigned int)wordCount)] - words[i])*sizeof(wchar_t));
     }
-    if (shingleCount > MAX_SHINGLE_PER_TEXT)
+    if (shingleCount > Config::getInstance().MAX_SHINGLE_PER_TEXT)
         for (unsigned int i = 0; i < count; i++){
             unsigned int minData = crcs[0],
                     minI = 0;
@@ -121,6 +122,7 @@ Shingle::Shingle(const t__text & inText)
 
 Shingle::~Shingle(void)
 {
+    delete[] data;
     delete textData;
 }
 

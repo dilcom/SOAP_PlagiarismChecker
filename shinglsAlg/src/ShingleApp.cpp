@@ -49,7 +49,7 @@ ShingleApp::~ShingleApp(void)
 
 ShingleAppLogger & ShingleApp::log(){
     return *Log;
-};
+}
 
 using namespace std;
 using namespace DePlaguarism;
@@ -97,7 +97,7 @@ void ShingleApp::findSimilar(t__text * txt){
         sort(appResult.begin(), appResult.end(), objectcomp);
         ///< now we have a sorted vector of pairs, so the job is done
         ///< fourth -- finally we should think about storing new document in DB
-        if (appResult.empty() || appResult[0].similarity <= THRESHOLD_TO_SAVE) {
+        if (appResult.empty() || appResult[0].similarity <= Config::getInstance().THRESHOLD_TO_SAVE) {
             tested->save(dataSource);
         }
         delete docIds;
@@ -105,7 +105,7 @@ void ShingleApp::findSimilar(t__text * txt){
     catch(...){
         *Log << "!!!ERROR in ShingleApp::findSimilar\n";
     }
-    if (LOG_EVERY_FCALL){
+    if (Config::getInstance().LOG_EVERY_FCALL){
         *Log << "ShingleApp::findSimilar execution took " << (int)(time + clock()) << "msec\n";
     }
 
@@ -116,7 +116,7 @@ int ShingleApp::shingleAlgorithm(t__text * txt, result *res){
     clock_t time = - clock();
     *Log << "Request from " << ipToStr() << " recieved\n";
     findSimilar(txt);
-    int cnt = min(appResult.size(), (size_t)DOCUMENTS_IN_RESPONSE);
+    int cnt = min(appResult.size(), (size_t)Config::getInstance().DOCUMENTS_IN_RESPONSE);
     res->arrayOfTexts.reserve(cnt);
     for (int j = 0; j < cnt; j += 1){
         t__text * textElement = new t__text();
@@ -130,7 +130,7 @@ int ShingleApp::shingleAlgorithm(t__text * txt, result *res){
         }
     }
     res->errCode = res->arrayOfTexts.empty() ? STATE_NO_SIMILAR : STATE_OK;
-    if (LOG_EVERY_FCALL){
+    if (Config::getInstance().LOG_EVERY_FCALL){
         *Log << "Request processed in " << (int)(time + clock()) << "msec\n";
         *Log << "Text size: " << (int)(sizeof(char)*strlen(txt->streamData)) << " bytes\n\n";
     }
@@ -154,7 +154,7 @@ void ShingleApp::stop(){
 }
 
 
-SOAP_SOCKET queue[MAX_QUEUE]; ///< The global request queue of sockets
+SOAP_SOCKET * queue; ///< The global request queue of sockets
 unsigned int head = 0, tail = 0; ///< Queue head and tail
 COND_TYPE queue_cv; ///< used only in socket queuing
 MUTEX_TYPE queue_mx; ///< used only in socket queuing
@@ -162,11 +162,12 @@ MUTEX_TYPE queue_mx; ///< used only in socket queuing
 
 int ShingleApp::run(int port){
     flagContinue = true; ///< once turned to false it will stop an application after next socket accept
-    ShingleApp *soap_thr[MAX_THR]; ///< each thread needs a runtime context
-    THREAD_TYPE tid[MAX_THR];
+    ShingleApp *soap_thr[Config::getInstance().MAX_THR]; ///< each thread needs a runtime context
+    THREAD_TYPE tid[Config::getInstance().MAX_THR];
+    queue = new SOAP_SOCKET(Config::getInstance().MAX_QUEUE);
     SOAP_SOCKET m, s;
     unsigned int i;
-    m = this->bind(GSOAP_IF, port, BACKLOG);
+    m = this->bind(Config::getInstance().GSOAP_IF.c_str(), port, Config::getInstance().BACKLOG);
     if (!soap_valid_socket(m)){
         *Log << "Connection error! Port may be busy!\n";
         return 1;
@@ -175,7 +176,7 @@ int ShingleApp::run(int port){
     COND_SETUP(queue_cv);
     MUTEX_SETUP(queue_mx);
     ///< 1. we create runtime contexts for threads and run them
-    for (i = 0; i < MAX_THR; i++) {
+    for (i = 0; i < Config::getInstance().MAX_THR; i++) {
         unsigned threadID;
         soap_thr[i] = new ShingleApp(*this);
         soap_thr[i]->setChild();
@@ -208,13 +209,13 @@ int ShingleApp::run(int port){
     }
 
     ///< 3. Now we want to stop all the threads, so lets fill the queue with invalid sockets and threads will stop itself
-    for (i = 0; i < MAX_THR; i++) {
+    for (i = 0; i < Config::getInstance().MAX_THR; i++) {
         while (enqueue(SOAP_INVALID_SOCKET) == SOAP_EOM)
             SLEEP(1);
         SLEEP(10);
     }
     ///< 4. Waiting for all the threads to end
-    for (i = 0; i < MAX_THR; i++) {
+    for (i = 0; i < Config::getInstance().MAX_THR; i++) {
         *Log << "Waiting for thread " << i <<" to terminate... ";
         THREAD_JOIN(tid[i]);
         *Log << "terminated\n";
@@ -222,6 +223,7 @@ int ShingleApp::run(int port){
     }
     COND_CLEANUP(queue_cv);
     MUTEX_CLEANUP(queue_mx);
+    delete[] queue;
     return 0;
 }
 
@@ -242,7 +244,7 @@ void *DePlaguarism::process_queue(void *soap)
         time += clock();
         tsoap->log() << "Served in " << (time/1000) << "msecs \n";
         i += 1;
-        if (i == CONNECTIONS_BEFORE_RESET){
+        if (i == Config::getInstance().CONNECTIONS_BEFORE_RESET){
             i = 0;
             tsoap->destroy(); ///< deallocates all the memory allocated in soap_malloc(..)
         }
@@ -255,7 +257,7 @@ int DePlaguarism::enqueue(SOAP_SOCKET sock) {
     unsigned int next;
     MUTEX_LOCK(queue_mx);
     next = tail + 1;
-    if (next >= MAX_QUEUE)
+    if (next >= Config::getInstance().MAX_QUEUE)
         next = 0;
     if (next == head)
         status = SOAP_EOM;
@@ -275,7 +277,7 @@ SOAP_SOCKET DePlaguarism::dequeue() {
     while (head == tail)
         COND_WAIT(queue_cv, queue_mx);
     sock = queue[head++];
-    if (head >= MAX_QUEUE)
+    if (head >= Config::getInstance().MAX_QUEUE)
         head = 0;
     MUTEX_UNLOCK(queue_mx);
     return sock;
@@ -290,7 +292,7 @@ void ShingleApp::loadDB() {
 #ifdef BERKELEYDB
             dataSource = new DataSrcBerkeleyDB(ENV_NAME, HASH_DB_NAME, DOCS_DB_NAME, mainEx);
 #else
-            dataSource = new DataSrcRedisCluster(REDIS_MAIN_CLIENT_ADDRESS, REDIS_MAIN_CLIENT_PORT, mainEx);
+            dataSource = new DataSrcRedisCluster(Config::getInstance().REDIS_MAIN_CLIENT_ADDRESS.c_str(), Config::getInstance().REDIS_MAIN_CLIENT_PORT, mainEx);
 #endif
         }
         catch (...){
