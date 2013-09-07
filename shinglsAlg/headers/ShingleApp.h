@@ -37,13 +37,13 @@ namespace DePlaguarism{
     {
     protected:
         ClassComp objectcomp; ///< compare obj for sort algorithm
-        vector<Pair> appResult;
+        vector<Pair> m_appResult;
         void findSimilar(t__text * txt);  ///< function compares new text with others already in the base
-        ShingleAppLogger * Log;  ///< logger object. Sends messages in several streams
+        ShingleAppLogger * m_Log;  ///< logger object. Sends messages in several streams
         int shingleAlgorithm(t__text * txt, result *res); ///< compare two texts using algorithm based on shingles
-        bool flagContinue;///< setting to false will make application to stop (only after accepting one more connection)
-        bool mainEx;///< setting to true will make instance to close DB handlers and free memory allocated for them
-        DePlaguarism::DataSrcAbstract * dataSource; ///< represents a db
+        bool m_flagContinue;///< setting to false will make application to stop (only after accepting one more connection)
+        bool m_mainEx;///< setting to true will make instance to close DB handlers and free memory allocated for them
+        DePlaguarism::DataSrcAbstract * m_dataSource; ///< represents a db
     public:
         void loadDB();///< initializes dataSorces
         void closeDB();///< closes dataSorces

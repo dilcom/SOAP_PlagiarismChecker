@@ -8,11 +8,11 @@ namespace DePlaguarism{
     class DataSrcBerkeleyDB : public DePlaguarism::DataSrcAbstract
     {
     private:
-        static DbEnv * env;
-        static Db * dbSrcHashes,
-        * dbSrcDocs;
-        static unsigned int docNumber;
-        static MUTEX_TYPE mtx;///< crossplatform mutex
+        static DbEnv * m_env;
+        static Db * m_dbSrcHashes,
+        * m_dbSrcDocs;
+        static unsigned int m_docNumber;
+        static MUTEX_TYPE m_mtx;///< crossplatform mutex
         void saveDocNumber();
         bool mainClient; ///< if true, object constructs and frees static envelope and dbs
     public:

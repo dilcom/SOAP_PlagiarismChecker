@@ -6,7 +6,7 @@ ShingleAppLogger::ShingleAppLogger(){
 }
 
 ShingleAppLogger::~ShingleAppLogger(){
-    for (vector<ostream*>::iterator it = targets.begin() + 1; it != targets.end(); it++)
+    for (vector<ostream*>::iterator it = targets.begin() + 1; it != targets.end(); it+=1)
         delete *it;
 }
 
@@ -22,42 +22,42 @@ void ShingleAppLogger::addLogFile(const char * filename){
 }
 
 void ShingleAppLogger::flush(){
-    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
+    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it += 1)
         **it << std::flush;
 }
 
 ShingleAppLogger & ShingleAppLogger::operator<<(const char * item){
-    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
+    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it += 1)
         **it << item;
     return *this;
 }
 
 ShingleAppLogger & ShingleAppLogger::operator<<(float item){
-    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
+    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it += 1)
         **it << item;
     return *this;
 }
 
 ShingleAppLogger & ShingleAppLogger::operator<<(int item){
-    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
+    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it += 1)
         **it << item;
     return *this;
 }
 
 ShingleAppLogger & ShingleAppLogger::operator<<(unsigned int item){
-    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
+    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it += 1)
         **it << item;
     return *this;
 }
 
 ShingleAppLogger & ShingleAppLogger::operator<<(const string & item){
-    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
+    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it += 1)
         (**it).write(item.data(), item.size());
     return *this;
 }
 
 ShingleAppLogger & ShingleAppLogger::operator<<(char item){
-    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it++)
+    for (vector<ostream*>::iterator it = targets.begin(); it != targets.end(); it += 1)
         **it << item;
     return *this;
 }

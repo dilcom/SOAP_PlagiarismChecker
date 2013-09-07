@@ -36,9 +36,9 @@ Shingle::Shingle(void)
 Shingle::Shingle(const t__text & inText)
 {
     //canonization
-    textData = new t__text(inText);
+    m_textData = new t__text(inText);
 
-    wstring *ptrtxt = utf8to16 (textData->streamData);
+    wstring *ptrtxt = utf8to16 (m_textData->streamData);
     wstring txt = *ptrtxt;
     wstrToLower(&txt);
     wchar_t *buff = new wchar_t[txt.length() + 1];
@@ -79,7 +79,7 @@ Shingle::Shingle(const t__text & inText)
     words[0] = 0;
     unsigned int posWords = 1,
             shingleCount = max(1, (int)(wordCount - DefaultValues::WORDS_EACH_SHINGLE + 1));
-    count = min(shingleCount, DefaultValues::MAX_SHINGLE_PER_TEXT);
+    m_count = min(shingleCount, DefaultValues::MAX_SHINGLE_PER_TEXT);
     for (size_t i = 0; i < posBuff; i++){
         if (buff[i] == ' ')
             words[posWords++] = i;
@@ -90,7 +90,7 @@ Shingle::Shingle(const t__text & inText)
         crcs[i] = Crc32(reinterpret_cast<const unsigned char*>(buff + words[i]), (words[i + min(DefaultValues::WORDS_EACH_SHINGLE, (unsigned int)wordCount)] - words[i])*sizeof(wchar_t));
     }
     if (shingleCount > DefaultValues::MAX_SHINGLE_PER_TEXT)
-        for (unsigned int i = 0; i < count; i++){
+        for (unsigned int i = 0; i < m_count; i++){
             unsigned int minData = crcs[0],
                     minI = 0;
             for (unsigned int j = 1; j < shingleCount; j++)
@@ -99,19 +99,19 @@ Shingle::Shingle(const t__text & inText)
                     minI = j;
                 }
             crcs[minI] = -1;
-            data[i] = minData;
+            m_data[i] = minData;
         }
     else
-        for (unsigned int i = 0; i < count; i++)
-            data[i] = crcs[i];
+        for (unsigned int i = 0; i < m_count; i++)
+            m_data[i] = crcs[i];
     time_t a;
     time(&a);
-    header.dateTime = *(localtime(&a));
-    header.authorGroup_len = strlen(textData->authorGroup);
-    header.authorName_len = strlen(textData->authorName);
-    header.data_len = strlen(textData->streamData);
-    header.textName_len = strlen(textData->name);
-    header.type = textData->type;
+    m_header.dateTime = *(localtime(&a));
+    m_header.authorGroup_len = strlen(m_textData->authorGroup);
+    m_header.authorName_len = strlen(m_textData->authorName);
+    m_header.data_len = strlen(m_textData->streamData);
+    m_header.textName_len = strlen(m_textData->name);
+    m_header.type = m_textData->type;
     delete[] words;
     delete ptrtxt;
     delete[] crcs;
@@ -121,25 +121,25 @@ Shingle::Shingle(const t__text & inText)
 
 Shingle::~Shingle(void)
 {
-    delete textData;
+    delete m_textData;
 }
 
 const unsigned int * Shingle::getData(){
-    return this->data;
+    return this->m_data;
 }
 
 unsigned int Shingle::getCount(){
-    return count;
+    return m_count;
 }
 
 const t__text & Shingle::getText(){
-    return *(this->textData);
+    return *(this->m_textData);
 }
 
 
 void Shingle::save(DataSrcAbstract *targetDataSource){
     try{
-        targetDataSource->save(data, count, header, textData);
+        targetDataSource->save(m_data, m_count, m_header, m_textData);
     }
     catch(...){
         //TODO exceptions processing

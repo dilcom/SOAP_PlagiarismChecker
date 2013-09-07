@@ -11,15 +11,15 @@ namespace DePlaguarism {
     class DataSrcRedisCluster : public DataSrcAbstract
     {
     private:
-        redisContext * mainClient; ///< pointer to main node client; this pointer also in clients[0] !!!
-        redisContext ** clients;
-        bool main;
-        int clientsCount;
-        static char * mainClientIp;
-        static int mainClientPort;
+        redisContext * m_mainClient; ///< pointer to main node client; this pointer also in clients[0] !!!
+        redisContext ** m_clients;
+        bool m_main;
+        int m_clientsCount;
+        static char * m_mainClientIp;
+        static int m_mainClientPort;
         static uint8_t slotMap[16384];
-        static uint16_t lastMapping; ///< contains crc16 hash of last config
-        static MUTEX_TYPE mtx;///< used in reinitializeCluster to prevent remapping
+        static uint16_t m_lastMapping; ///< contains crc16 hash of last config
+        static MUTEX_TYPE m_mtx;///< used in reinitializeCluster to prevent remapping
         void reinitializeCluster();
         void deinitializeCluster();
         void redisCommandWithoutReply(redisContext *c, const char *format, ...);
