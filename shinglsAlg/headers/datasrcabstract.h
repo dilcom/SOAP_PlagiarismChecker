@@ -6,16 +6,17 @@
 #include "./precompiled.h"
 
 namespace DePlaguarism{
-
+    
+    typedef std::vector<unsigned int> getIdsByHashesResult__t;
+    
     class DataSrcAbstract
     {
     public:
-        virtual std::vector<unsigned int> * getIdsByHashes(const unsigned int * hashes, unsigned int count) = 0;
+        virtual getIdsByHashesResult__t * getIdsByHashes(const unsigned int * hashes, unsigned int count) = 0;
         virtual void save(const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt) = 0;
         virtual void getDocument(unsigned int docNumber, t__text **trgt, soap * parent) = 0;
         virtual ~DataSrcAbstract() {};
     };
-
 }
 
 #endif // DATASRCABSTRACT_H

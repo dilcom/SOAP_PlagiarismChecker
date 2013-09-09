@@ -1,7 +1,8 @@
 #include "../headers/ShingleApp.h"
 using namespace DePlaguarism;
+using namespace std;
 
-typedef std::vector<unsigned int>::const_iterator vecConstIt;
+typedef vector<unsigned int>::const_iterator vecConstIt;
 typedef map<unsigned int, unsigned int>::const_iterator mapConstIt;
 
 bool DePlaguarism::txtValid(t__text * a){
@@ -82,7 +83,7 @@ void ShingleApp::findSimilar(t__text * txt){
         unsigned int cnt = tested->getCount();
         ///< first -- extract from data source documents with same hashes
         const unsigned int * data = tested->getData();
-        std::vector<unsigned int> * docIds = m_dataSource->getIdsByHashes(data, tested->getCount());
+        getIdsByHashesResult__t * docIds = m_dataSource->getIdsByHashes(data, tested->getCount());
         ///< now we have vector of document ids that have same hashes as our document
         ///< second -- count repeatings; because of huge count of ids we use a map
         for (vecConstIt i = docIds->begin(); i != docIds->end(); i++){
@@ -208,7 +209,7 @@ int ShingleApp::run(int port){
             }
         }
         *m_Log << "Thread " << i << " accepts socket " << s << " connection from IP " << ipToStr() << "\n";
-        ///< SOAP_EOM means the following: "too many connections in queue, please wait for a slot, sir"
+        // SOAP_EOM means the following: "too many connections in queue, please wait for a slot, sir"
         while (enqueue(s) == SOAP_EOM)
             SLEEP(1);
     }
@@ -217,7 +218,6 @@ int ShingleApp::run(int port){
     for (i = 0; i < DefaultValues::MAX_THR; i++) {
         while (enqueue(SOAP_INVALID_SOCKET) == SOAP_EOM)
             SLEEP(1);
-        SLEEP(10);
     }
     ///< 4. Waiting for all the threads to end
     for (i = 0; i < DefaultValues::MAX_THR; i++) {

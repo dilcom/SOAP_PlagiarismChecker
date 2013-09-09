@@ -1,5 +1,6 @@
 #include "../headers/datasrcberkeleydb.h"
 using namespace DePlaguarism;
+using namespace std;
 
 DbEnv * DePlaguarism::DataSrcBerkeleyDB::m_env;
 Db * DePlaguarism::DataSrcBerkeleyDB::m_dbSrcHashes;
@@ -7,7 +8,7 @@ Db * DePlaguarism::DataSrcBerkeleyDB::m_dbSrcDocs;
 unsigned int DePlaguarism::DataSrcBerkeleyDB::m_docNumber;
 MUTEX_TYPE DePlaguarism::DataSrcBerkeleyDB::m_mtx;
 
-typedef std::vector<std::string>::const_iterator vecStrConstIter;
+typedef vector<string>::const_iterator vecStrConstIter;
 
 DataSrcBerkeleyDB::DataSrcBerkeleyDB(const char * envName, const char *hashDbName, const char *docsDbName, bool mainFlag)
 {
@@ -53,9 +54,9 @@ DataSrcBerkeleyDB::~DataSrcBerkeleyDB(){
 }
 
 
-std::vector<unsigned int> * DataSrcBerkeleyDB::getIdsByHashes(const unsigned int * hashes, unsigned int count){
+getIdsByHashesResult__t * DataSrcBerkeleyDB::getIdsByHashes(const unsigned int * hashes, unsigned int count){
     Dbc *cursorp;
-    std::vector<unsigned int> * res = new std::vector<unsigned int>;
+    getIdsByHashesResult__t * res = new getIdsByHashesResult__t;
     size_t size = sizeof(hashes[0]);
     for (unsigned int i = 0; i < count; i += 1){
         Dbt key((void*)(hashes + i), size);
@@ -121,7 +122,7 @@ void DataSrcBerkeleyDB::saveDocNumber(){
     m_dbSrcDocs->cursor(NULL, &cursorp, DB_WRITECURSOR);
     cursorp->put(&keyDocNum, &dataDocNum, DB_KEYFIRST);
     cursorp->close();
-    std::cout << m_docNumber << "\n";
+    cout << m_docNumber << "\n";
 }
 
 void DataSrcBerkeleyDB::getDocument(unsigned int docNumber, t__text ** trgtPtr, soap * parent){

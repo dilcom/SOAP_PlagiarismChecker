@@ -1,8 +1,9 @@
 #include "../headers/datasrcrediscluster.h"
 
 using namespace DePlaguarism;
+using namespace std;
 
-typedef std::vector<std::string>::const_iterator vecStrConstIter;
+typedef vector<string>::const_iterator vecStrConstIter;
 
 uint8_t DataSrcRedisCluster::slotMap[16384];
 uint16_t DataSrcRedisCluster::m_lastMapping; ///< contains crc16 hash of last config
@@ -11,10 +12,10 @@ char * DataSrcRedisCluster::m_mainClientIp;
 int DataSrcRedisCluster::m_mainClientPort;
 uint16_t DePlaguarism::crc16(const char *buf, int len);
 
-std::vector<std::string> * DePlaguarism::split(const std::string &s, char delim, std::vector<std::string> *elems) {
-    std::stringstream ss(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
+vector<string> * DePlaguarism::split(const string &s, char delim, vector<string> *elems) {
+    stringstream ss(s);
+    string item;
+    while (getline(ss, item, delim)) {
         elems->push_back(item);
     }
     return elems;
@@ -38,7 +39,7 @@ DataSrcRedisCluster::DataSrcRedisCluster(const char * ipAddress, int port, bool 
             ///< did we connect?
             clusterInfo = redisCommandWithReply(m_mainClient, "cluster nodes");
             m_lastMapping = crc16(clusterInfo->str, clusterInfo->len);
-            std::string conf(clusterInfo->str);
+            string conf(clusterInfo->str);
             initializeCluster(&conf, true);
         }
         catch(...) {
@@ -49,8 +50,8 @@ DataSrcRedisCluster::DataSrcRedisCluster(const char * ipAddress, int port, bool 
     }
 }
 
-void DataSrcRedisCluster::initializeCluster(std::string * configString, bool remap){
-    std::vector<std::string> confStrs;
+void DataSrcRedisCluster::initializeCluster(string * configString, bool remap){
+    vector<string> confStrs;
     split(*configString, '\n', &confStrs);
     ///< each of vector elements now represents one node in redis cluster
     ///< some of them may be slaves so we`ll dec clients count each time we meet it
@@ -63,7 +64,7 @@ void DataSrcRedisCluster::initializeCluster(std::string * configString, bool rem
     int currentNodeNumber = 1;
     int nodeId;
     for (vecStrConstIter i = confStrs.begin(); i != confStrs.end(); i += 1){
-        std::vector<std::string> confTokens;
+        vector<string> confTokens;
         split(*i, ' ', &confTokens);
         /* confTokens[0] - node id
          * confTokens[1] - ip:port
@@ -74,29 +75,29 @@ void DataSrcRedisCluster::initializeCluster(std::string * configString, bool rem
          * confTokens[6] - connected\disconnected
          * confTokens[7-...] - slots assigned
          */
-        if (confTokens[2].find("master") != std::string::npos){
+        if (confTokens[2].find("master") != string::npos){
             try {
                 confTokens.at(7);
                 ///< if there is no slots for this node in config, it will throw the exception
             }
-            catch(const std::out_of_range& oor) {
+            catch(const out_of_range& oor) {
                 ///< it`s slave! we should process next line
-                if (confTokens[2].find("myself") == std::string::npos)
+                if (confTokens[2].find("myself") == string::npos)
                     m_clientsCount -= 1;
                 continue;
             }
             if (confTokens[6] == "disconnected")
                 throw("One of master nodes is down!");
             ///< 1. connecting only if it`s not myself
-            if (confTokens[2].find("myself") == std::string::npos){
+            if (confTokens[2].find("myself") == string::npos){
                 char ip[30];
                 unsigned int pos = confTokens[1].find(":");
                 for (size_t j = 0; j < pos; j += 1)
                     ip[j] = confTokens[1][j];
                 ip[pos] = '\0';
-                std::string a = confTokens[1].substr(pos + 1);
+                string a = confTokens[1].substr(pos + 1);
                 int port;
-                std::istringstream ( a ) >> port;
+                istringstream ( a ) >> port;
                 m_clients[currentNodeNumber] = redisConnect(ip, port);
                 nodeId = currentNodeNumber;
                 currentNodeNumber += 1;
@@ -108,17 +109,17 @@ void DataSrcRedisCluster::initializeCluster(std::string * configString, bool rem
                 vecStrConstIter slotIterator = confTokens.begin();
                 slotIterator += 7;
                 while (slotIterator != confTokens.end()){
-                    const std::string * slotStr = &(*slotIterator);
+                    const string * slotStr = &(*slotIterator);
                     if (slotStr[0][0] != '[') {
-                        if (slotStr->find("-") != std::string::npos){ ///< slot range or one slot?
+                        if (slotStr->find("-") != string::npos){ ///< slot range or one slot?
                             int slotRange[2];
-                            std::istringstream ( *slotStr ) >> slotRange[0] >> slotRange[1];
+                            istringstream ( *slotStr ) >> slotRange[0] >> slotRange[1];
                             slotRange[1] = - slotRange[1];
                             for (int j = slotRange[0]; j <= slotRange[1]; j += 1)
                                 slotMap[j] = nodeId;
                         } else {
                             int slot;
-                            std::istringstream ( *slotStr ) >> slot;
+                            istringstream ( *slotStr ) >> slot;
                             slotMap[slot] = nodeId;
                         }
                     }
@@ -126,7 +127,7 @@ void DataSrcRedisCluster::initializeCluster(std::string * configString, bool rem
                 }
             }
         } else {
-            if (confTokens[2].find("myself") == std::string::npos)
+            if (confTokens[2].find("myself") == string::npos)
                 m_clientsCount -= 1;
             ///< decrement clientsCount because we are faced with slave node and it`s not clients[0]
         }
@@ -189,7 +190,7 @@ void DataSrcRedisCluster::reinitializeCluster(){
             }
         }
         newMapping = crc16(clusterInfo->str, clusterInfo->len);
-        std::string s(clusterInfo->str);
+        string s(clusterInfo->str);
         clusterNotAvalible = false;
         ///< now lets try to reconnect (saving connection to old cluster)
         redisContext ** oldClients = m_clients;
@@ -402,8 +403,8 @@ void DataSrcRedisCluster::getDocument(unsigned int docNumber, t__text **trgtPtr,
     } while (flag);
 }
 
-std::vector<unsigned int> * DataSrcRedisCluster::getIdsByHashes(const unsigned int * hashes, unsigned int count){
-    std::vector<unsigned int> * result = new std::vector<unsigned int>();
+getIdsByHashesResult__t * DataSrcRedisCluster::getIdsByHashes(const unsigned int * hashes, unsigned int count){
+    getIdsByHashesResult__t * result = new getIdsByHashesResult__t();
     bool flag = false;
     do {
         flag = false;

@@ -18,7 +18,7 @@ namespace DePlaguarism{
     public:
         DataSrcBerkeleyDB(const char * envName, const char * hashDbName, const char * docsDbName, bool mainFlag); ///< for single/master database
         virtual ~DataSrcBerkeleyDB();
-        virtual std::vector<unsigned int> * getIdsByHashes(const unsigned int * hashes, unsigned int count);
+        virtual getIdsByHashesResult__t * getIdsByHashes(const unsigned int * hashes, unsigned int count);
         virtual void save(const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt);
         virtual void getDocument(unsigned int docNumber, t__text **trgtPtr, soap *parent);
     };//class header

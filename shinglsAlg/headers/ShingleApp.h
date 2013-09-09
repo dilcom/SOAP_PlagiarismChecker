@@ -4,7 +4,6 @@
 #include "../headers/Shingles.h"
 #include "../headers/ShingleAppLogger.h"
 
-using namespace std;
 /*
 main class. It provides receiving massages and its processing
 */
@@ -37,13 +36,13 @@ namespace DePlaguarism{
     {
     protected:
         ClassComp objectcomp; ///< compare obj for sort algorithm
-        vector<Pair> m_appResult;
+        std::vector<Pair> m_appResult;
         void findSimilar(t__text * txt);  ///< function compares new text with others already in the base
         ShingleAppLogger * m_Log;  ///< logger object. Sends messages in several streams
         int shingleAlgorithm(t__text * txt, result *res); ///< compare two texts using algorithm based on shingles
         bool m_flagContinue;///< setting to false will make application to stop (only after accepting one more connection)
         bool m_mainEx;///< setting to true will make instance to close DB handlers and free memory allocated for them
-        DePlaguarism::DataSrcAbstract * m_dataSource; ///< represents a db
+        DataSrcAbstract * m_dataSource; ///< represents a db
     public:
         void loadDB();///< initializes dataSorces
         void closeDB();///< closes dataSorces
@@ -52,8 +51,8 @@ namespace DePlaguarism{
         void setMain();///< sets mainEx to true, allows application to close DB handlers and free memory allocated for them
         void setChild();///< sets mainEx to false & inits documentCount with 0
         virtual int run(int port);
-        string nowToStr(); ///< converts current date/time to string
-        string ipToStr(); ///< converts current client`s ip to string
+        std::string nowToStr(); ///< converts current date/time to string
+        std::string ipToStr(); ///< converts current client`s ip to string
         ShingleAppLogger & log();///< getter for Log field
         ShingleApp();
         virtual ~ShingleApp();

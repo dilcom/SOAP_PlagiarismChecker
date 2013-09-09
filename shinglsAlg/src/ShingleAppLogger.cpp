@@ -1,6 +1,8 @@
 #include "../headers/ShingleAppLogger.h"
 
 using namespace DePlaguarism;
+using namespace std;
+
 ShingleAppLogger::ShingleAppLogger(){
     targets.push_back(&cout);
 }
