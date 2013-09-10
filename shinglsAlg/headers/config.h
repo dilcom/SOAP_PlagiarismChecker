@@ -9,20 +9,28 @@
 #include <libconfig.h++>
 
 namespace DePlaguarism {
+//! Singleton class.
+    /*!
+      We have access to its instance from anywhere in application.
+      All constructors and operator= are private to forbid creation of extra instances.
+    */
     class Config {
-    // singleton
     private:
         Config(){}
         Config(const Config & src){}
         Config& operator=(const Config&){}
     public:
+        //! Returns the only object of that class.
         static Config & getInstance(){
             static Config INSTANCE;
             return INSTANCE;
         }
-        
+
+        //! Loads config from file.
+            /*!
+              \param configFile is relative path to the text file.
+            */
         void loadConfig(const char * configFile);
-        void saveConfig(const char * configFile);
         // ShingleApp.h
         float THRESHOLD_TO_SAVE; ///< maximum value from which new texts won`t be added to the database
         unsigned int DOCUMENTS_IN_RESPONSE;///< maximum count of documents which will be responced to client
@@ -41,6 +49,7 @@ namespace DePlaguarism {
     };
     
     namespace DefaultValues {
+        // default values for config
         const std::string CONFIG_FILE = "shingle_app.conf";
         const float THRESHOLD_TO_SAVE = 0.6; ///< maximum value from which new texts won`t be added to the database
         const unsigned int DOCUMENTS_IN_RESPONSE = 10;///< maximum count of documents which will be responced to client

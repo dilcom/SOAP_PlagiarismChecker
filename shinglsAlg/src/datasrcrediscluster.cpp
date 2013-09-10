@@ -6,8 +6,8 @@ using namespace std;
 typedef vector<string>::const_iterator vecStrConstIter;
 
 uint8_t DataSrcRedisCluster::slotMap[16384];
-uint16_t DataSrcRedisCluster::m_lastMapping; ///< contains crc16 hash of last config
-MUTEX_TYPE DataSrcRedisCluster::m_mtx;///< used in reinitializeCluster to prevent remapping
+uint16_t DataSrcRedisCluster::m_lastMapping; // contains crc16 hash of last config
+MUTEX_TYPE DataSrcRedisCluster::m_mtx;// used in reinitializeCluster to prevent remapping
 char * DataSrcRedisCluster::m_mainClientIp;
 int DataSrcRedisCluster::m_mainClientPort;
 uint16_t DePlaguarism::crc16(const char *buf, int len);
@@ -36,7 +36,7 @@ DataSrcRedisCluster::DataSrcRedisCluster(const char * ipAddress, int port, bool 
         redisReply * clusterInfo;
         try {
             m_mainClient = redisConnect(m_mainClientIp, m_mainClientPort);
-            ///< did we connect?
+            // did we connect?
             clusterInfo = redisCommandWithReply(m_mainClient, "cluster nodes");
             m_lastMapping = crc16(clusterInfo->str, clusterInfo->len);
             string conf(clusterInfo->str);
@@ -53,14 +53,14 @@ DataSrcRedisCluster::DataSrcRedisCluster(const char * ipAddress, int port, bool 
 void DataSrcRedisCluster::initializeCluster(string * configString, bool remap){
     vector<string> confStrs;
     split(*configString, '\n', &confStrs);
-    ///< each of vector elements now represents one node in redis cluster
-    ///< some of them may be slaves so we`ll dec clients count each time we meet it
+    // each of vector elements now represents one node in redis cluster
+    // some of them may be slaves so we`ll dec clients count each time we meet it
     m_clientsCount = confStrs.size();
     m_clients = new redisContext*[m_clientsCount];
     for (int i = 1; i < m_clientsCount; i += 1)
         m_clients[i] = NULL;
     m_clients[0] = m_mainClient;
-    ///< main clients is always num 0
+    // main clients is always num 0
     int currentNodeNumber = 1;
     int nodeId;
     for (vecStrConstIter i = confStrs.begin(); i != confStrs.end(); i += 1){
@@ -78,17 +78,17 @@ void DataSrcRedisCluster::initializeCluster(string * configString, bool remap){
         if (confTokens[2].find("master") != string::npos){
             try {
                 confTokens.at(7);
-                ///< if there is no slots for this node in config, it will throw the exception
+                // if there is no slots for this node in config, it will throw the exception
             }
             catch(const out_of_range& oor) {
-                ///< it`s slave! we should process next line
+                // it`s slave! we should process next line
                 if (confTokens[2].find("myself") == string::npos)
                     m_clientsCount -= 1;
                 continue;
             }
             if (confTokens[6] == "disconnected")
                 throw("One of master nodes is down!");
-            ///< 1. connecting only if it`s not myself
+            // 1. connecting only if it`s not myself
             if (confTokens[2].find("myself") == string::npos){
                 char ip[30];
                 unsigned int pos = confTokens[1].find(":");
@@ -104,14 +104,14 @@ void DataSrcRedisCluster::initializeCluster(string * configString, bool remap){
             } else {
                 nodeId = 0;
             }
-            ///< 2. slots assign we do it once every time cluster changes
+            // 2. slots assign we do it once every time cluster changes
             if (remap){
                 vecStrConstIter slotIterator = confTokens.begin();
                 slotIterator += 7;
                 while (slotIterator != confTokens.end()){
                     const string * slotStr = &(*slotIterator);
                     if (slotStr[0][0] != '[') {
-                        if (slotStr->find("-") != string::npos){ ///< slot range or one slot?
+                        if (slotStr->find("-") != string::npos){ // slot range or one slot?
                             int slotRange[2];
                             istringstream ( *slotStr ) >> slotRange[0] >> slotRange[1];
                             slotRange[1] = - slotRange[1];
@@ -129,7 +129,7 @@ void DataSrcRedisCluster::initializeCluster(string * configString, bool remap){
         } else {
             if (confTokens[2].find("myself") == string::npos)
                 m_clientsCount -= 1;
-            ///< decrement clientsCount because we are faced with slave node and it`s not clients[0]
+            // decrement clientsCount because we are faced with slave node and it`s not clients[0]
         }
     }
 }
@@ -137,7 +137,7 @@ void DataSrcRedisCluster::initializeCluster(string * configString, bool remap){
 void DataSrcRedisCluster::reinitializeCluster(){
     for (int i = 0; i < m_clientsCount; i += 1){
         if (m_clients[i] != NULL && m_clients[i]->err == REDIS_OK){
-            redisReply * rep = (redisReply *)redisCommand(m_clients[i], "exec"); ///< just to be sure we`re outside of transaction
+            redisReply * rep = (redisReply *)redisCommand(m_clients[i], "exec"); // just to be sure we`re outside of transaction
             if (rep != NULL)
                 freeReplyObject(rep);
         }
@@ -164,11 +164,11 @@ void DataSrcRedisCluster::reinitializeCluster(){
                 flag = !clusterInfo || (clusterInfo->type == REDIS_REPLY_ERROR);
                 i += 1;
             }
-            ///< now i is a number of working node or all the nodes down (i = clientsCount)
+            // now i is a number of working node or all the nodes down (i = clientsCount)
             if (flag){
                 if (clusterInfo)
                     freeReplyObject(clusterInfo);
-                ///< lets try to reconnect to mainClient again
+                // lets try to reconnect to mainClient again
                 clusterInfo = NULL;
                 redisContext * tmp = NULL;
                 try {
@@ -192,14 +192,14 @@ void DataSrcRedisCluster::reinitializeCluster(){
         newMapping = crc16(clusterInfo->str, clusterInfo->len);
         string s(clusterInfo->str);
         clusterNotAvalible = false;
-        ///< now lets try to reconnect (saving connection to old cluster)
+        // now lets try to reconnect (saving connection to old cluster)
         redisContext ** oldClients = m_clients;
         int oldCliCount = m_clientsCount;
-        m_mainClient = oldClients[i]; ///< first working client
+        m_mainClient = oldClients[i]; // first working client
         MUTEX_LOCK(m_mtx);
         try{
             initializeCluster(&s, m_lastMapping != newMapping);
-            ///< if we successed lets free previous cluster
+            // if we successed lets free previous cluster
             for (int j = 0; j < oldCliCount; j += 1){
                 if (j != i)
                     redisFree(oldClients[j]);
@@ -207,8 +207,8 @@ void DataSrcRedisCluster::reinitializeCluster(){
             delete[] oldClients;
         }
         catch(...) {
-            ///< returning to previous state if we failed
-            deinitializeCluster(); ///< deletes all the new nodes except mainClient
+            // returning to previous state if we failed
+            deinitializeCluster(); // deletes all the new nodes except mainClient
             m_mainClient = oldClients[0];
             m_clients = oldClients;
             m_clientsCount = oldCliCount;
@@ -223,7 +223,7 @@ void DataSrcRedisCluster::reinitializeCluster(){
 }
 
 void DataSrcRedisCluster::deinitializeCluster(){
-    ///< does not deinit main client!!!
+    // does not deinit main client!!!
     for (int i = 1; i < m_clientsCount; i += 1){
         if (m_clients[i] != NULL)
             redisFree(m_clients[i]);
@@ -280,7 +280,7 @@ redisReply * DataSrcRedisCluster::redisCommandWithReply(redisContext *c, const c
 }
 
 void DataSrcRedisCluster::save(const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt){
-    ///< 0. we need new document number
+    // 0. we need new document number
     unsigned int docNumber;
     bool flag = false;
     do {
@@ -309,12 +309,12 @@ void DataSrcRedisCluster::save(const unsigned int * hashes, unsigned int count, 
         flag = false;
         try {
             redisContext * docContext = m_clients[slotMap[crc16(key, lenDoc) & 0x3fff]];
-            ///< 1. start a transaction
+            // 1. start a transaction
             for (int i = 0; i < m_clientsCount; i += 1){
                 redisCommandWithoutReply(m_clients[i], "multi");
             }
-            ///< 2. add all the data to save
-            ///< 2.1. hash->docNumber
+            // 2. add all the data to save
+            // 2.1. hash->docNumber
             for (unsigned int i = 0; i < count; i += 1){
                 char tmp[15];
                 sprintf(tmp, "hash:%d", hashes[i]);
@@ -322,15 +322,15 @@ void DataSrcRedisCluster::save(const unsigned int * hashes, unsigned int count, 
                 redisContext * context = m_clients[slotMap[crc16(tmp, len) & 0x3fff]];
                 redisCommandWithoutReply(context, "sadd %b %d", tmp, len, docNumber);
             }
-            ///< 2.2. docNumber->document
-            redisCommandWithoutReply(docContext, "hset %b textName %b", key, (size_t) lenDoc, txt->name, header.textName_len); ///< textName is a name of field in hash
+            // 2.2. docNumber->document
+            redisCommandWithoutReply(docContext, "hset %b textName %b", key, (size_t) lenDoc, txt->name, header.textName_len); // textName is a name of field in hash
             redisCommandWithoutReply(docContext, "hset %b textData %b", key, (size_t) lenDoc, txt->streamData, header.data_len);
             redisCommandWithoutReply(docContext, "hset %b authorName %b", key, (size_t) lenDoc, txt->authorName, header.authorName_len);
             redisCommandWithoutReply(docContext, "hset %b authorGroup %b", key, (size_t) lenDoc, txt->authorGroup, header.authorGroup_len);
             redisCommandWithoutReply(docContext, "hset %b textType %b", key, (size_t) lenDoc, &(txt->type), sizeof(txt->type));
             char * date = asctime(&(header.dateTime));
             redisCommandWithoutReply(docContext, "hset %b date %b", key, (size_t) lenDoc, date, strlen(date));
-            ///< 3. finish the transaction
+            // 3. finish the transaction
             for (int i = 0; i < m_clientsCount; i += 1){
                 redisCommandWithoutReply(m_clients[i], "exec");
             }

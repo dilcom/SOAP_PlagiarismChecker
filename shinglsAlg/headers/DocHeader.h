@@ -7,6 +7,7 @@
 
 namespace DePlaguarism{
 
+    //! Contains lengths of t__text object strings and numeric values used with t__text.
     struct DocHeader {
         tm dateTime;
         size_t textName_len;

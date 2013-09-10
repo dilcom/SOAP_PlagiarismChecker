@@ -1,0 +1,13 @@
+digraph "C:/progging/repos" {
+  compound=true
+  node [ fontsize="10", fontname="Helvetica"];
+  edge [ labelfontsize="10", labelfontname="Helvetica"];
+  subgraph clusterdir_c5e546ab58ac07a7202a88bd5adff941 {
+    graph [ bgcolor="#ddddee", pencolor="black", label="progging" fontname="Helvetica", fontsize="10", URL="dir_c5e546ab58ac07a7202a88bd5adff941.html"]
+  subgraph clusterdir_58dc6d14803eff90a6f4c83e8bd8ebc2 {
+    graph [ bgcolor="#eeeeff", pencolor="black", label="" URL="dir_58dc6d14803eff90a6f4c83e8bd8ebc2.html"];
+    dir_58dc6d14803eff90a6f4c83e8bd8ebc2 [shape=plaintext label="repos"];
+    dir_6a0046b6fbb35a4a79300c65df018710 [shape=box label="shingleServerSOAP" color="red" fillcolor="white" style="filled" URL="dir_6a0046b6fbb35a4a79300c65df018710.html"];
+  }
+  }
+}

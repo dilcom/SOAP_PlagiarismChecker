@@ -1,0 +1,7 @@
+digraph "Graphical Class Hierarchy"
+{
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node1 [label="DePlaguarism::DocHeader",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$struct_de_plaguarism_1_1_doc_header.html",tooltip="Contains lengths of t__text object strings and numeric values used with t__text. "];
+}

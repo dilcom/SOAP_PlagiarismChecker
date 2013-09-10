@@ -73,14 +73,14 @@ getIdsByHashesResult__t * DataSrcBerkeleyDB::getIdsByHashes(const unsigned int *
 }
 
 void DataSrcBerkeleyDB::save(const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt){
-    ///< 0. we need new document number
+    // 0. we need new document number
     MUTEX_LOCK(m_mtx);
     unsigned int localDocNumber = m_docNumber;
     m_docNumber += 1;
     saveDocNumber();
     MUTEX_UNLOCK(m_mtx);
     //TO DO document number!
-    ///< 1. hash->localDocNumber
+    // 1. hash->localDocNumber
     Dbc * cursorp;
     size_t size = sizeof(hashes[0]);
     Dbt data((void*)(&localDocNumber), sizeof(localDocNumber));
@@ -90,7 +90,7 @@ void DataSrcBerkeleyDB::save(const unsigned int * hashes, unsigned int count, Do
         cursorp->put(&key, &data, DB_KEYFIRST);
         cursorp->close();
     }
-    ///< 2. localDocNumber->document
+    // 2. localDocNumber->document
     int length = sizeof(header) + header.authorGroup_len + header.authorName_len + header.data_len
             + header.textName_len;
     char * textDocData = new char[length];

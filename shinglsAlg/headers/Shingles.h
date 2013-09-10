@@ -6,21 +6,31 @@ using namespace DePlaguarism;
 
 namespace DePlaguarism{
 
+    //! Represents text, its shingles and tools to get it.
     class Shingle
     {
     protected:
-        unsigned int m_data[DefaultValues::MAX_SHINGLE_PER_TEXT]; ///< array with crc32 hashes from given text
-        unsigned int m_count; ///< count of elements in data field
-        DocHeader m_header;
-        t__text *m_textData;
+        unsigned int m_data[DefaultValues::MAX_SHINGLE_PER_TEXT]; ///< Array with crc32 hashes from given text
+        unsigned int m_count; ///< Count of elements in data field
+        DocHeader m_header; ///< Header of text stored in object
+        t__text *m_textData; ///< Text itself stored here.
     public:
-        const unsigned int * getData(); ///< getter for data field
-        unsigned int getCount(); ///< getter for count field
-        const t__text &getText(); ///< getter for text field
+        const unsigned int * getData(); ///< Getter for data field
+        unsigned int getCount(); ///< Getter for count field
+        const t__text &getText(); ///< Getter for text field
         Shingle();
-        Shingle(const t__text &txt); ///< contructs object from UTF-8 text data
+        //! Contructs object from UTF-8 text data
+        /*!
+           \param txt is a text with much additional information.
+         */
+        Shingle(const t__text &txt);
         ~Shingle();
-        void save(DataSrcAbstract * targetDataSource); ///< saves all the data to DB
+        //! Saves all the data to DB
+        /*!
+         * Saves text and shingles to DB.
+         * \param targetDataSource is a pointer to DB where all the information must be stored.
+         */
+        void save(DataSrcAbstract * targetDataSource);
     };
     uint_least32_t Crc32(const unsigned char * buf, size_t len); ///< crc32 hash function
 }

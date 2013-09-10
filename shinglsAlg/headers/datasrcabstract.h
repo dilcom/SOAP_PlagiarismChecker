@@ -8,12 +8,34 @@
 namespace DePlaguarism{
     
     typedef std::vector<unsigned int> getIdsByHashesResult__t;
-    
+    //! Parent class for data wrappers.
     class DataSrcAbstract
     {
     public:
+        //! Gets ids by hashes.
+            /*!
+              \param hashes is pointer to array of hashes.
+              \param count is count of hashes.
+              \return vector containing all the document ids where was the same hash.
+              \sa save(), getDocument()
+            */
         virtual getIdsByHashesResult__t * getIdsByHashes(const unsigned int * hashes, unsigned int count) = 0;
+        //! Saves a document with hashes.
+            /*!
+              \param hashes is pointer to array of hashes.
+              \param count is count of hashes.
+              \param header contains sizes of string in txt.
+              \param txt is a document which we want to save.
+              \sa getIdsByHashes(), getDocument()
+            */
         virtual void save(const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt) = 0;
+        //! Loads document info from DB and fills a t__text document with it.
+            /*!
+              \param docNumber is an id of document in DB.
+              \param trgt is a pointer to pointer to t__text object, which we will fill
+              \param parent here to add out t__text object under gsoap garbage collector
+              \sa getIdsByHashes(), save()
+            */
         virtual void getDocument(unsigned int docNumber, t__text **trgt, soap * parent) = 0;
         virtual ~DataSrcAbstract() {};
     };

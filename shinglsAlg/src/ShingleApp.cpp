@@ -81,29 +81,29 @@ void ShingleApp::findSimilar(t__text * txt){
     m_appResult.clear();
     try{
         unsigned int cnt = tested->getCount();
-        ///< first -- extract from data source documents with same hashes
+        // first -- extract from data source documents with same hashes
         const unsigned int * data = tested->getData();
         getIdsByHashesResult__t * docIds = m_dataSource->getIdsByHashes(data, tested->getCount());
-        ///< now we have vector of document ids that have same hashes as our document
-        ///< second -- count repeatings; because of huge count of ids we use a map
+        // now we have vector of document ids that have same hashes as our document
+        // second -- count repeatings; because of huge count of ids we use a map
         for (vecConstIt i = docIds->begin(); i != docIds->end(); i++){
             unsigned int el = *(i);
             mapConstIt it = fResult.find(el);
-            if (it != fResult.end()) ///< is there already same docid in the map?
-                fResult[el] = fResult[el] + 1; ///< inc
+            if (it != fResult.end()) // is there already same docid in the map?
+                fResult[el] = fResult[el] + 1; // inc
             else
                 fResult[el] = 1;
         }
-        ///< now we have a map with pairs (document id; count of equal hashes)
-        ///< third -- create a vector sorted by count of equal hashes
+        // now we have a map with pairs (document id; count of equal hashes)
+        // third -- create a vector sorted by count of equal hashes
         for (map<unsigned int, unsigned int>::iterator it = fResult.begin(); it != fResult.end(); it++){
             Pair * tmpPtr;
             m_appResult.push_back( *(tmpPtr = new Pair(it->first, (float)(it->second)/cnt)) );
             delete tmpPtr;
         }
         sort(m_appResult.begin(), m_appResult.end(), objectcomp);
-        ///< now we have a sorted vector of pairs, so the job is done
-        ///< fourth -- finally we should think about storing new document in DB
+        // now we have a sorted vector of pairs, so the job is done
+        // fourth -- finally we should think about storing new document in DB
         if (m_appResult.empty() || m_appResult[0].similarity <= Config::getInstance().THRESHOLD_TO_SAVE) {
             tested->save(m_dataSource);
         }
@@ -161,15 +161,15 @@ void ShingleApp::stop(){
 }
 
 
-SOAP_SOCKET queue[DefaultValues::MAX_QUEUE]; ///< The global request queue of sockets
-unsigned int head = 0, tail = 0; ///< Queue head and tail
-COND_TYPE queue_cv; ///< used only in socket queuing
-MUTEX_TYPE queue_mx; ///< used only in socket queuing
+SOAP_SOCKET queue[DefaultValues::MAX_QUEUE]; // The global request queue of sockets
+unsigned int head = 0, tail = 0; // Queue head and tail
+COND_TYPE queue_cv; // used only in socket queuing
+MUTEX_TYPE queue_mx; // used only in socket queuing
 
 
 int ShingleApp::run(int port){
-    m_flagContinue = true; ///< once turned to false it will stop an application after next socket accept
-    ShingleApp *soap_thr[DefaultValues::MAX_THR]; ///< each thread needs a runtime context
+    m_flagContinue = true; // once turned to false it will stop an application after next socket accept
+    ShingleApp *soap_thr[DefaultValues::MAX_THR]; // each thread needs a runtime context
     THREAD_TYPE tid[DefaultValues::MAX_THR];
     SOAP_SOCKET m, s;
     unsigned int i;
@@ -181,7 +181,7 @@ int ShingleApp::run(int port){
     *m_Log << "Socket connection successful" << m << "\n";
     COND_SETUP(queue_cv);
     MUTEX_SETUP(queue_mx);
-    ///< 1. we create runtime contexts for threads and run them
+    // 1. we create runtime contexts for threads and run them
     for (i = 0; i < DefaultValues::MAX_THR; i++) {
         unsigned threadID;
         soap_thr[i] = new ShingleApp(*this);
@@ -190,7 +190,7 @@ int ShingleApp::run(int port){
         *m_Log << "Starting thread " << i << "\n";
         THREAD_CREATE(&tid[i], process_queue, (void*)soap_thr[i], &threadID);
     }
-    ///< 2. We`re accepting every connection on our port and putting it into queue
+    // 2. We`re accepting every connection on our port and putting it into queue
     while(true) {
         s = this->accept();
         if (!m_flagContinue)
@@ -214,12 +214,12 @@ int ShingleApp::run(int port){
             SLEEP(1);
     }
 
-    ///< 3. Now we want to stop all the threads, so lets fill the queue with invalid sockets and threads will stop itself
+    // 3. Now we want to stop all the threads, so lets fill the queue with invalid sockets and threads will stop itself
     for (i = 0; i < DefaultValues::MAX_THR; i++) {
         while (enqueue(SOAP_INVALID_SOCKET) == SOAP_EOM)
             SLEEP(1);
     }
-    ///< 4. Waiting for all the threads to end
+    // 4. Waiting for all the threads to end
     for (i = 0; i < DefaultValues::MAX_THR; i++) {
         *m_Log << "Waiting for thread " << i <<" to terminate... ";
         THREAD_JOIN(tid[i]);
@@ -250,7 +250,7 @@ void *DePlaguarism::process_queue(void *soap)
         i += 1;
         if (i == Config::getInstance().CONNECTIONS_BEFORE_RESET){
             i = 0;
-            tsoap->destroy(); ///< deallocates all the memory allocated in soap_malloc(..)
+            tsoap->destroy(); // deallocates all the memory allocated in soap_malloc(..)
         }
     }
     return SOAP_OK;

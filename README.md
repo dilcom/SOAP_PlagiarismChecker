@@ -7,11 +7,7 @@ I. Application itself
 
 1) git clone https://github.com/dilcom/shingleServerSOAP.git
 
-2) cd ./shinglsAlg/projects/QMAKE
-
-3) qmake & make if you have installed libqt-devel
-   or
-   build in qtcreator
+2) ./shinglsAlg/Make_with_BDB.sh or ./shinglsAlg/Make_with_redis.sh
    
 Done!
 
@@ -42,3 +38,10 @@ II. Redis Cluster
    it creates cluster of N nodes, all of them must be running
 
 Done!
+
+LIBS
+
+qt-devel -> to build application with qmake
+libconfig
+libhireds -> if you use redis as data source
+libdb -> if you use BDB as data source
