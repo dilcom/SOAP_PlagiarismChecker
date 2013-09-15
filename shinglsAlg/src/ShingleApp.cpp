@@ -9,20 +9,20 @@ bool ShingleApp::validateText(t__text * a){
     if (a->streamData == NULL)
         return false;
     if (a->authorGroup == NULL) {
-        a->authorGroup = (char*)(soap_malloc(this, 10));
-        strcpy(a->authorGroup, "NoGroup");
+        a->authorGroup = (char*)(soap_malloc(a->creator, 10));
+        strcpy(a->authorGroup, "NoGroup\0");
     }
     if (a->authorName == NULL) {
-        a->authorName = (char*)(soap_malloc(this, 10));
-        strcpy(a->authorName, "NoAuName");
+        a->authorName = (char*)(soap_malloc(a->creator, 10));
+        strcpy(a->authorName, "NoAuName\0");
     }
     if (a->name == NULL) {
-        a->name = (char*)(soap_malloc(this, 11));
-        strcpy(a->name, "NoTxtName");
+        a->name = (char*)(soap_malloc(a->creator, 11));
+        strcpy(a->name, "NoTxtName\0");
     }
     if (a->date == NULL) {
-        a->date = (char*)(soap_malloc(this, 8));
-        strcpy(a->date, "NoDate");
+        a->date = (char*)(soap_malloc(a->creator, 8));
+        strcpy(a->date, "NoDate\0");
     }
     return true;
 }

@@ -978,6 +978,7 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_copy_result(struct soap *soap, int st, int tt, v
 void t__text::soap_default(struct soap *soap)
 {
 	(void)soap; /* appease -Wall -Werror */
+    this->creator = soap;
 	soap_default_string(soap, &this->t__text::name);
 	soap_default_string(soap, &this->t__text::date);
 	soap_default_string(soap, &this->t__text::streamData);
