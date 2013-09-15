@@ -8,7 +8,6 @@ using namespace DePlaguarism;
 using namespace std;
 
 const string exitCommand = "exit";
-const string resetDBcommand = "resetdb";
 const string reloadCommand = "reload";
 
 string commandStr;
@@ -65,8 +64,6 @@ int main(int argc, char* argv[]) {
     ShingleApp * srv = soapStart(&tid);
     do {
         cin >> commandStr;
-        if (commandStr == resetDBcommand)
-            srv->resetDB();
         if (commandStr == reloadCommand) {
             soapStop(srv, tid);
             instance.loadConfig(configName);

@@ -88,8 +88,10 @@ public:
                  strcpy(authorGroup, src.authorGroup);
                  streamData = (char*)(soap_malloc(creator, strlen(src.streamData) + 1));
                  strcpy(streamData, src.streamData);
-                 date = (char*)(soap_malloc(creator, strlen(src.date) + 1));
-                 strcpy(date, src.date);
+                 if (src.date != NULL) {
+                     date = (char*)(soap_malloc(creator, strlen(src.date) + 1));
+                     strcpy(date, src.date);
+                 }
                  similarity = src.similarity;
                  type = src.type;
              }

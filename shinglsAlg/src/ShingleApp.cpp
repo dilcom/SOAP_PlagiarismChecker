@@ -313,8 +313,3 @@ void ShingleApp::closeDB(){
         delete m_dataSource;
 }
 
-void ShingleApp::resetDB(){
-    *m_Log << "ResetDB invoked!\n";
-    closeDB();
-    loadDB();
-}

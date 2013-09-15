@@ -391,6 +391,7 @@ void DataSrcRedisCluster::getDocument(unsigned int docNumber, t__text **trgtPtr,
 
             rep = redisCommandWithReply(context, "hget %b date", key, (size_t) len);
             trgt->date = reinterpret_cast<char*>(soap_malloc(parent, rep->len + 1));
+            strcpy(trgt->authorGroup, rep->str);
             freeReplyObject(rep);
         }
         catch(...){
