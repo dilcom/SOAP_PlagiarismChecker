@@ -1,12 +1,12 @@
 #include "../headers/datasrcberkeleydb.h"
-using namespace DePlaguarism;
+using namespace DePlagiarism;
 using namespace std;
 
-DbEnv * DePlaguarism::DataSrcBerkeleyDB::m_env;
-Db * DePlaguarism::DataSrcBerkeleyDB::m_dbSrcHashes;
-Db * DePlaguarism::DataSrcBerkeleyDB::m_dbSrcDocs;
-unsigned int DePlaguarism::DataSrcBerkeleyDB::m_docNumber;
-MUTEX_TYPE DePlaguarism::DataSrcBerkeleyDB::m_mtx;
+DbEnv * DePlagiarism::DataSrcBerkeleyDB::m_env;
+Db * DePlagiarism::DataSrcBerkeleyDB::m_dbSrcHashes;
+Db * DePlagiarism::DataSrcBerkeleyDB::m_dbSrcDocs;
+unsigned int DePlagiarism::DataSrcBerkeleyDB::m_docNumber;
+MUTEX_TYPE DePlagiarism::DataSrcBerkeleyDB::m_mtx;
 
 typedef vector<string>::const_iterator vecStrConstIter;
 

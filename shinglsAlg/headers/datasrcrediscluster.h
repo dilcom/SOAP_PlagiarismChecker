@@ -3,7 +3,7 @@
 #include "./datasrcabstract.h"
 #include "../include/hiredis.h"
 
-namespace DePlaguarism {
+namespace DePlagiarism {
     //! Hash function, used here to let wrapper know which node it must address a request.
     uint16_t crc16(const char *buf, int len);
     std::vector<std::string> *split(const std::string &s, char delim, std::vector<std::string> *elems);

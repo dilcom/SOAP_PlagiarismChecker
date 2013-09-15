@@ -1,6 +1,6 @@
 #include "../headers/datasrcrediscluster.h"
 
-using namespace DePlaguarism;
+using namespace DePlagiarism;
 using namespace std;
 
 typedef vector<string>::const_iterator vecStrConstIter;
@@ -10,9 +10,9 @@ uint16_t DataSrcRedisCluster::m_lastMapping; // contains crc16 hash of last conf
 MUTEX_TYPE DataSrcRedisCluster::m_mtx;// used in reinitializeCluster to prevent remapping
 char * DataSrcRedisCluster::m_mainClientIp;
 int DataSrcRedisCluster::m_mainClientPort;
-uint16_t DePlaguarism::crc16(const char *buf, int len);
+uint16_t DePlagiarism::crc16(const char *buf, int len);
 
-vector<string> * DePlaguarism::split(const string &s, char delim, vector<string> *elems) {
+vector<string> * DePlagiarism::split(const string &s, char delim, vector<string> *elems) {
     stringstream ss(s);
     string item;
     while (getline(ss, item, delim)) {
@@ -391,7 +391,7 @@ void DataSrcRedisCluster::getDocument(unsigned int docNumber, t__text **trgtPtr,
 
             rep = redisCommandWithReply(context, "hget %b date", key, (size_t) len);
             trgt->date = reinterpret_cast<char*>(soap_malloc(parent, rep->len + 1));
-            strcpy(trgt->authorGroup, rep->str);
+            strcpy(trgt->date, rep->str);
             freeReplyObject(rep);
         }
         catch(...){
@@ -488,7 +488,7 @@ static const uint16_t crc16tab[256]= {
     0x6e17,0x7e36,0x4e55,0x5e74,0x2e93,0x3eb2,0x0ed1,0x1ef0
 };
 
-uint16_t DePlaguarism::crc16(const char *buf, int len) {
+uint16_t DePlagiarism::crc16(const char *buf, int len) {
     int counter;
     uint16_t crc = 0;
     for (counter = 0; counter < len; counter++)

@@ -8,7 +8,7 @@
 #endif
 #include <libconfig.h++>
 
-namespace DePlaguarism {
+namespace DePlagiarism {
 //! Singleton class.
     /*!
       We have access to its instance from anywhere in application.

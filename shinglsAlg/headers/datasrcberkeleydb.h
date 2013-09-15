@@ -3,9 +3,9 @@
 
 #include "datasrcabstract.h"
 
-namespace DePlaguarism{
+namespace DePlagiarism{
     //! Wrpper class for Berkeley DB
-    class DataSrcBerkeleyDB : public DePlaguarism::DataSrcAbstract
+    class DataSrcBerkeleyDB : public DePlagiarism::DataSrcAbstract
     {
     private:
         static DbEnv * m_env;

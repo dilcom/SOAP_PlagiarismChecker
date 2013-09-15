@@ -7,7 +7,7 @@
 /*
 main class. It provides receiving massages and its processing
 */
-namespace DePlaguarism{
+namespace DePlagiarism{
     //! Infinite loop of serve requests.
     /*!
       Each of this functions runs in separate thread. It waits till where is a new free socket in queue.
@@ -56,10 +56,11 @@ namespace DePlaguarism{
         std::vector<Pair> m_appResult; ///< Application result after serving a request.
         void findSimilar(t__text * txt);  ///< Function compares new text with others already stored in the DB.
         ShingleAppLogger * m_Log;  ///< Logger object
-        int shingleAlgorithm(t__text * txt, result *res); ///< Search for plaguarism in \param txt using algorithm based on shingles.
+        int shingleAlgorithm(t__text * txt, result *res); ///< Search for Plagiarism in \param txt using algorithm based on shingles.
         bool m_flagContinue;///< Setting to false will stop the serve cycle.
         bool m_mainEx;///< Setting to true will make instance to close DB handlers and free memory allocated for them
         DataSrcAbstract * m_dataSource; ///< Represents a db
+        bool validateText(t__text * a);
     public:
         void loadDB();///< Initializes dataSorces
         void closeDB();///< Closes dataSorces
@@ -82,9 +83,6 @@ namespace DePlaguarism{
         virtual ~ShingleApp();
         virtual	int CompareText(t__text * txt, result *res);///< Main method of service which process incoming request
     };
-
-    //! Checks all necessary \param a fiels to not be null.
-    bool txtValid(t__text * a);
 
 }
 

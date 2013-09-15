@@ -1,12 +1,30 @@
 #include "../headers/ShingleApp.h"
-using namespace DePlaguarism;
+using namespace DePlagiarism;
 using namespace std;
 
 typedef vector<unsigned int>::const_iterator vecConstIt;
 typedef map<unsigned int, unsigned int>::const_iterator mapConstIt;
 
-bool DePlaguarism::txtValid(t__text * a){
-    return (a->streamData && a->authorGroup && a->authorName && a->name);
+bool ShingleApp::validateText(t__text * a){
+    if (a->streamData == NULL)
+        return false;
+    if (a->authorGroup == NULL) {
+        a->authorGroup = (char*)(soap_malloc(this, 10));
+        strcpy(a->authorGroup, "NoGroup");
+    }
+    if (a->authorName == NULL) {
+        a->authorName = (char*)(soap_malloc(this, 10));
+        strcpy(a->authorName, "NoAuName");
+    }
+    if (a->name == NULL) {
+        a->name = (char*)(soap_malloc(this, 11));
+        strcpy(a->name, "NoTxtName");
+    }
+    if (a->date == NULL) {
+        a->date = (char*)(soap_malloc(this, 8));
+        strcpy(a->date, "NoDate");
+    }
+    return true;
 }
 
 string ShingleApp::nowToStr(){
@@ -58,11 +76,8 @@ ShingleAppLogger & ShingleApp::log(){
     return *m_Log;
 }
 
-using namespace std;
-using namespace DePlaguarism;
-
 int ShingleApp::CompareText(t__text * txt, result * res){
-    if (txtValid(txt))
+    if (validateText(txt))
         switch (txt->type) {
         case TEXT:
             return shingleAlgorithm(txt, res);
@@ -72,7 +87,6 @@ int ShingleApp::CompareText(t__text * txt, result * res){
         }
     return SOAP_ERR;
 }
-
 
 void ShingleApp::findSimilar(t__text * txt){
     clock_t time = - clock();
@@ -154,18 +168,14 @@ bool ClassComp::operator() (const Pair & left, const Pair & right) const
     return left.similarity > right.similarity;
 }
 
-
-
 void ShingleApp::stop(){
     m_flagContinue = false;
 }
-
 
 SOAP_SOCKET queue[DefaultValues::MAX_QUEUE]; // The global request queue of sockets
 unsigned int head = 0, tail = 0; // Queue head and tail
 COND_TYPE queue_cv; // used only in socket queuing
 MUTEX_TYPE queue_mx; // used only in socket queuing
-
 
 int ShingleApp::run(int port){
     m_flagContinue = true; // once turned to false it will stop an application after next socket accept
@@ -232,9 +242,9 @@ int ShingleApp::run(int port){
 }
 
 #ifdef WIN32
-unsigned _stdcall DePlaguarism::process_queue(void *soap)
+unsigned _stdcall DePlagiarism::process_queue(void *soap)
 #else
-void *DePlaguarism::process_queue(void *soap)
+void *DePlagiarism::process_queue(void *soap)
 #endif
 {
     ShingleApp *tsoap = static_cast<ShingleApp*>(soap);
@@ -256,7 +266,7 @@ void *DePlaguarism::process_queue(void *soap)
     return SOAP_OK;
 }
 
-int DePlaguarism::enqueue(SOAP_SOCKET sock) {
+int DePlagiarism::enqueue(SOAP_SOCKET sock) {
     int status = SOAP_OK;
     unsigned int next;
     MUTEX_LOCK(queue_mx);
@@ -275,7 +285,7 @@ int DePlaguarism::enqueue(SOAP_SOCKET sock) {
     return status;
 }
 
-SOAP_SOCKET DePlaguarism::dequeue() {
+SOAP_SOCKET DePlagiarism::dequeue() {
     SOAP_SOCKET sock;
     MUTEX_LOCK(queue_mx);
     while (head == tail)
@@ -312,4 +322,3 @@ void ShingleApp::closeDB(){
     if (m_dataSource)
         delete m_dataSource;
 }
-

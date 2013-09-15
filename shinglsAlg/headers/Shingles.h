@@ -2,9 +2,9 @@
 #define SHINGLES_H
 
 #include "config.h"
-using namespace DePlaguarism;
+using namespace DePlagiarism;
 
-namespace DePlaguarism{
+namespace DePlagiarism{
 
     //! Represents text, its shingles and tools to get it.
     class Shingle

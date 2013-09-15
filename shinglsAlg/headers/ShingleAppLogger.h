@@ -3,7 +3,7 @@
 
 #include "./precompiled.h"
 
-namespace DePlaguarism{
+namespace DePlagiarism{
 
     class ShingleAppLogger
     {

@@ -1,6 +1,6 @@
 #include "../headers/ShingleAppLogger.h"
 
-using namespace DePlaguarism;
+using namespace DePlagiarism;
 using namespace std;
 
 ShingleAppLogger::ShingleAppLogger(){
