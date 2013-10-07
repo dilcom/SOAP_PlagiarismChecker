@@ -5,6 +5,13 @@ using namespace std;
 typedef vector<unsigned int>::const_iterator vecConstIt;
 typedef map<unsigned int, unsigned int>::const_iterator mapConstIt;
 
+// Multithread handling globals
+SOAP_SOCKET queue[DefaultValues::MAX_QUEUE]; // The global request queue of sockets
+unsigned int head = 0, tail = 0; // Queue head and tail
+COND_TYPE queue_cv; // used only in socket queuing
+MUTEX_TYPE queue_mx; // used only in socket queuing
+// Multithread handling end
+
 bool ShingleApp::validateText(t__text * a){
     if (a->streamData == NULL)
         return false;
@@ -33,7 +40,7 @@ string ShingleApp::nowToStr(){
     time_t rawtime;
     time(&rawtime);
     struct tm * timeinfo = localtime(&rawtime);
-    strftime (buffer, 80, "%X %x", timeinfo);
+    strftime (buffer, sizeof(buffer), "%X %x", timeinfo);
     res = buffer;
     return res;
 }
@@ -171,11 +178,6 @@ bool ClassComp::operator() (const Pair & left, const Pair & right) const
 void ShingleApp::stop(){
     m_flagContinue = false;
 }
-
-SOAP_SOCKET queue[DefaultValues::MAX_QUEUE]; // The global request queue of sockets
-unsigned int head = 0, tail = 0; // Queue head and tail
-COND_TYPE queue_cv; // used only in socket queuing
-MUTEX_TYPE queue_mx; // used only in socket queuing
 
 int ShingleApp::run(int port){
     m_flagContinue = true; // once turned to false it will stop an application after next socket accept

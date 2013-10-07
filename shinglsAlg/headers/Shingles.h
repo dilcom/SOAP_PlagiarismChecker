@@ -32,7 +32,6 @@ namespace DePlagiarism{
          */
         void save(DataSrcAbstract * targetDataSource);
     };
-    uint_least32_t Crc32(const unsigned char * buf, size_t len); ///< crc32 hash function
 }
 
 #endif

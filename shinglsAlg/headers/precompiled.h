@@ -35,5 +35,6 @@
 #include <cstdio>
 #include <sstream>
 #include "../include/threads.h"
+#include <hashfunctions.h>
 
 #endif // PRECOMPILED_H

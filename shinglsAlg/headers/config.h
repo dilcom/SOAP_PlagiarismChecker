@@ -19,6 +19,7 @@ namespace DePlagiarism {
         Config(){}
         Config(const Config & src){}
         Config& operator=(const Config&){}
+        void lookup();
     public:
         //! Returns the only object of that class.
         static Config & getInstance(){
