@@ -2,7 +2,6 @@
 #define SHINGLE_APP_H
 
 #include "../headers/Shingles.h"
-#include "../headers/ShingleAppLogger.h"
 
 /*
 main class. It provides receiving massages and its processing
@@ -55,18 +54,25 @@ namespace DePlagiarism{
         ClassComp objectcomp; ///< Compare obj for sort algorithm.
         std::vector<Pair> m_appResult; ///< Application result after serving a request.
         void findSimilar(t__text * txt);  ///< Function compares new text with others already stored in the DB.
-        ShingleAppLogger * m_Log;  ///< Logger object
+        log4cpp::Category * logger;  ///< Logger object
         int shingleAlgorithm(t__text * txt, result *res); ///< Search for Plagiarism in \param txt using algorithm based on shingles.
         bool m_flagContinue;///< Setting to false will stop the serve cycle.
         bool m_mainEx;///< Setting to true will make instance to close DB handlers and free memory allocated for them
         DataSrcAbstract * m_dataSource; ///< Represents a db
         bool validateText(t__text * a);
     public:
+        char threadName[30]; ///< ThreadName for logger
         void loadDB();///< Initializes dataSorces
         void closeDB();///< Closes dataSorces
         void stop();///< Sets flagContinue to false, stops the application
         void setMain();///< Sets mainEx to true, allows application to close DB handlers and free memory allocated for them
-        void setChild();///< Sets mainEx to false
+        //! Marks object as child
+        /*!
+         * Sets mainEx to false
+         * \param i child number
+         */
+        void setChild(int i);
+        log4cpp::Category & getLogger(); ///< Getter for log field
         //! Runs cycle of serve.
         /*!
           Main client only accepts connection and puts tasks to queue. Slave objects take tasks and do all the work.
@@ -78,7 +84,6 @@ namespace DePlagiarism{
         virtual int run(int port);
         std::string nowToStr(); ///< Converts current date/time to string
         std::string ipToStr(); ///< Converts current client`s ipv4 to string
-        ShingleAppLogger & log();///< Getter for Log field
         ShingleApp();
         virtual ~ShingleApp();
         virtual	int CompareText(t__text * txt, result *res);///< Main method of service which process incoming request

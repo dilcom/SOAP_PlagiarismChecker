@@ -9,8 +9,10 @@ using namespace std;
 
 const string exitCommand = "exit";
 const string reloadCommand = "reload";
-
+const char threadName[] = "MainThread";
 string commandStr;
+
+log4cpp::Category * mainCat;
 
 //! Used here to output wsdl if needed.
     /*!
@@ -39,7 +41,7 @@ void sigterm_handler(int signum);
       \return Server object.
       \sa soapStop(), runService()
     */
-ShingleApp * soapStart(THREAD_TYPE *tid);
+ShingleApp * soapStart(THREAD_TYPE *tid, const char *configName);
 
 //! Stops and deallocates all the memory allocated by server object.
     /*!
@@ -59,22 +61,22 @@ int main(int argc, char* argv[]) {
     sigaction(SIGTERM, &action, NULL);
     sigaction(SIGINT, &action, NULL);
     const char * configName = ( argc > 2 ) ? argv[2] : DefaultValues::CONFIG_FILE.c_str();
-    Config & instance = Config::getInstance();
-    instance.loadConfig(configName);
-    ShingleApp * srv = soapStart(&tid);
+    mainCat = Log::getLogger();
+    ShingleApp * srv = soapStart(&tid, configName);
     do {
         cin >> commandStr;
         if (commandStr == reloadCommand) {
             soapStop(srv, tid);
-            instance.loadConfig(configName);
-            srv = soapStart(&tid);
+            srv = soapStart(&tid, configName);
         }
     } while (commandStr != exitCommand);
     soapStop(srv, tid);
     return 0;
 }
 
-ShingleApp * soapStart(THREAD_TYPE * tid) {
+ShingleApp * soapStart(THREAD_TYPE * tid, const char * configName) {
+    Config & instance = Config::getInstance();
+    instance.loadConfig(configName);
     ShingleApp *srv = new ShingleApp();
     soap_set_imode(srv, SOAP_C_UTFSTRING);
     soap_set_omode(srv, SOAP_C_UTFSTRING);
@@ -83,7 +85,7 @@ ShingleApp * soapStart(THREAD_TYPE * tid) {
     //signal(SIGPIPE, sigpipe_handler);  /* and when the above are not supported, we use a sigpipe handler */
     unsigned threadID;
     THREAD_CREATE(tid, runService, (void*)srv, threadID);
-    srv->log() << "Application started!\n";
+    mainCat->notice("{%s}: Application started!", threadName);
     return srv;
 }
 
@@ -110,21 +112,26 @@ void soapStop(ShingleApp *srv, THREAD_TYPE tid) {
         write(sockfd, "", 1);
         close(sockfd);
     } else {
-        srv->log() << "Just perform a request to server to stop it.\n";
+        mainCat->notice("{%s}: Just perform a request to server to stop it.", threadName);
     }
     THREAD_JOIN(tid);
-    srv->log() << "Service stopped! Bye-bye...\n";
+    mainCat->notice("{%s} Service stopped! Bye-bye...", threadName);
     delete srv;
 }
 
 int http_get(struct soap *soap) {
+    clock_t time = -clock();
     FILE *fd = NULL;
     char *s = strchr(soap->path, '?');
     if (!s || strcmp(s, "?wsdl"))
         return SOAP_GET_METHOD;
+    char * thName = ((ShingleApp*)soap)->threadName;
+    mainCat->debug("{%s}: HTTP get request recieved", thName);
     fd = fopen("shingle.wsdl", "rb"); // open WSDL file to copy
-    if (!fd)
+    if (!fd) {        
+        mainCat->error("{%s}: Wsdl file not found!", thName);
         return 404; // return HTTP not found error
+    }
     soap->http_content = "text/xml"; // HTTP header with text/xml content
     soap_response(soap, SOAP_FILE);
     while (true) {
@@ -136,6 +143,8 @@ int http_get(struct soap *soap) {
     }
     fclose(fd);
     soap_end_send(soap);
+    time += clock();
+    mainCat->debug("{%s}: Http get processed in %d msecs.", thName, time);
     return SOAP_OK;
 }
 
@@ -152,10 +161,10 @@ void * runService(void * app)
 {
     ShingleApp * srv = (ShingleApp*)app;
     srv->fget = http_get;
-    srv->log() << "Server putted up!\n" << srv->nowToStr() << '\n';
+    mainCat->info("Server putted up!");
     srv->setMain();
     while (srv->run(Config::getInstance().SERVICE_PORT)){
-        srv->log() << "Emergency shoutdown! Waiting 10 seconds.\n";
+        mainCat->alert("{%s}: Emergency shoutdown! Waiting 10 seconds.", srv->threadName);
         SLEEP(10000);
     }
     return NULL;

@@ -1,7 +1,11 @@
 #ifndef SHINGLES_H
 #define SHINGLES_H
 
-#include "config.h"
+#ifdef BERKELEYDB
+    #include "datasrcberkeleydb.h"
+#else
+    #include "datasrcrediscluster.h"
+#endif
 using namespace DePlagiarism;
 
 namespace DePlagiarism{

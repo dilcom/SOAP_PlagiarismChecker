@@ -1,11 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#ifdef BERKELEYDB
-    #include "datasrcberkeleydb.h"
-#else
-    #include "datasrcrediscluster.h"
-#endif
+#include "./precompiled.h"
 #include <libconfig.h++>
 
 namespace DePlagiarism {
@@ -13,13 +9,13 @@ namespace DePlagiarism {
     /*!
       We have access to its instance from anywhere in application.
       All constructors and operator= are private to forbid creation of extra instances.
+      This class also stores information needed by loggers
     */
     class Config {
     private:
         Config(){}
         Config(const Config & src){}
-        Config& operator=(const Config&){}
-        void lookup();
+        Config & operator=(const Config&){}
     public:
         //! Returns the only object of that class.
         static Config & getInstance(){
@@ -32,6 +28,7 @@ namespace DePlagiarism {
               \param configFile is relative path to the text file.
             */
         void loadConfig(const char * configFile);
+        
         // ShingleApp.h
         float THRESHOLD_TO_SAVE; ///< maximum value from which new texts won`t be added to the database
         unsigned int DOCUMENTS_IN_RESPONSE;///< maximum count of documents which will be responced to client
@@ -50,6 +47,8 @@ namespace DePlagiarism {
     };
     
     namespace DefaultValues {
+        // logging constants
+        const std::string LOG_FILE_NAME = "shingle_app.log";
         // default values for config
         const std::string CONFIG_FILE = "shingle_app.conf";
         const float THRESHOLD_TO_SAVE = 0.6; ///< maximum value from which new texts won`t be added to the database

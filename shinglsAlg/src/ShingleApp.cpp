@@ -34,17 +34,6 @@ bool ShingleApp::validateText(t__text * a){
     return true;
 }
 
-string ShingleApp::nowToStr(){
-    string res;
-    char buffer[80];
-    time_t rawtime;
-    time(&rawtime);
-    struct tm * timeinfo = localtime(&rawtime);
-    strftime (buffer, sizeof(buffer), "%X %x", timeinfo);
-    res = buffer;
-    return res;
-}
-
 string ShingleApp::ipToStr(){
     string res("");
     char str[16];
@@ -57,30 +46,25 @@ string ShingleApp::ipToStr(){
 
 void ShingleApp::setMain(){
     m_mainEx = true;
+    sprintf(threadName, "Acceptor");
+    logger = Log::getLogger();
 }
 
-void ShingleApp::setChild(){
+void ShingleApp::setChild(int i){
     m_mainEx = false;
+    sprintf(threadName, "Worker N%d", i);
+    logger = Log::getLogger();
 }
 
 ShingleApp::ShingleApp(void)
 {
     setMain();
-    m_Log = new ShingleAppLogger();
-    //Log->addLogFile("log.txt");
     loadDB();
 }
 
 ShingleApp::~ShingleApp(void)
 {	
     closeDB();
-    if (m_mainEx){
-        delete m_Log;
-    }
-}
-
-ShingleAppLogger & ShingleApp::log(){
-    return *m_Log;
 }
 
 int ShingleApp::CompareText(t__text * txt, result * res){
@@ -131,18 +115,15 @@ void ShingleApp::findSimilar(t__text * txt){
         delete docIds;
     }
     catch(...){
-        *m_Log << "!!!ERROR in ShingleApp::findSimilar\n";
+        logger->error("{%s}: ERROR in ShingleApp::findSimilar", threadName);
     }
-    if (DefaultValues::LOG_EVERY_FCALL){
-        *m_Log << "ShingleApp::findSimilar execution took " << (int)(time + clock()) << "msec\n";
-    }
-
+    logger->debug("{%s}: Execution of ShingleApp::findSimilar took %d msecs", threadName, time + clock());
     delete tested;
 }
 
 int ShingleApp::shingleAlgorithm(t__text * txt, result *res){
     clock_t time = - clock();
-    *m_Log << "Request from " << ipToStr() << " recieved\n";
+    logger->debug("{%s}: Request from %s recieved", threadName, ipToStr().c_str());
     findSimilar(txt);
     int cnt = min(m_appResult.size(), (size_t)Config::getInstance().DOCUMENTS_IN_RESPONSE);
     res->arrayOfTexts.reserve(cnt);
@@ -158,10 +139,8 @@ int ShingleApp::shingleAlgorithm(t__text * txt, result *res){
         }
     }
     res->errCode = res->arrayOfTexts.empty() ? STATE_NO_SIMILAR : STATE_OK;
-    if (DefaultValues::LOG_EVERY_FCALL){
-        *m_Log << "Request processed in " << (int)(time + clock()) << "msec\n";
-        *m_Log << "Text size: " << (int)(sizeof(char)*strlen(txt->streamData)) << " bytes\n\n";
-    }
+    logger->debug("{%s}: Execution of ShingleApp::shingleAlgorithm took %d msecs", threadName, time + clock());
+    logger->debug("{%s}: Text size: %d bytes", threadName, (int)(sizeof(char)*strlen(txt->streamData)));
     return SOAP_OK;
 }
 
@@ -187,19 +166,19 @@ int ShingleApp::run(int port){
     unsigned int i;
     m = this->bind(Config::getInstance().GSOAP_IF.c_str(), port, DefaultValues::BACKLOG);
     if (!soap_valid_socket(m)){
-        *m_Log << "Connection error! Port may be busy!\n";
+        logger->error("{%s}: Connection error! Port may be busy!", threadName);
         return 1;
     }
-    *m_Log << "Socket connection successful" << m << "\n";
+    logger->debug("{%s}: Socket connection successful %d", threadName, m);
     COND_SETUP(queue_cv);
     MUTEX_SETUP(queue_mx);
     // 1. we create runtime contexts for threads and run them
     for (i = 0; i < DefaultValues::MAX_THR; i++) {
         unsigned threadID;
         soap_thr[i] = new ShingleApp(*this);
-        soap_thr[i]->setChild();
+        soap_thr[i]->setChild(i);
         soap_thr[i]->loadDB();
-        *m_Log << "Starting thread " << i << "\n";
+        logger->notice("{%s}: Starting thread %d", threadName, threadID, i);
         THREAD_CREATE(&tid[i], process_queue, (void*)soap_thr[i], &threadID);
     }
     // 2. We`re accepting every connection on our port and putting it into queue
@@ -211,16 +190,16 @@ int ShingleApp::run(int port){
         {
             if (this->errnum)
             {
-                soap_print_fault(stderr);
+                logger->error("{%s}: Invalid socket recieved.", threadName);
                 continue; // retry
             }
             else
             {
-                *m_Log << "Server timed out\n";
+                logger->error("{%s}: Server timed out", threadName);
                 break;
             }
         }
-        *m_Log << "Thread " << i << " accepts socket " << s << " connection from IP " << ipToStr() << "\n";
+        logger->debug("{%s}: One more socket %d connection from IP %s", threadName, s, ipToStr().c_str());
         // SOAP_EOM means the following: "too many connections in queue, please wait for a slot, sir"
         while (enqueue(s) == SOAP_EOM)
             SLEEP(1);
@@ -233,14 +212,18 @@ int ShingleApp::run(int port){
     }
     // 4. Waiting for all the threads to end
     for (i = 0; i < DefaultValues::MAX_THR; i++) {
-        *m_Log << "Waiting for thread " << i <<" to terminate... ";
+        logger->notice("{%s}: Waiting for thread %d to terminate... ", threadName, i);
         THREAD_JOIN(tid[i]);
-        *m_Log << "terminated\n";
+        logger->notice("{%s}: ...terminated", threadName);
         delete soap_thr[i];
     }
     COND_CLEANUP(queue_cv);
     MUTEX_CLEANUP(queue_mx);
     return 0;
+}
+
+log4cpp::Category & ShingleApp::getLogger() {
+    return *logger;
 }
 
 #ifdef WIN32
@@ -258,11 +241,14 @@ void *DePlagiarism::process_queue(void *soap)
         unsigned int time = - clock();
         tsoap->serve();
         time += clock();
-        tsoap->log() << "Served in " << (time/1000) << "msecs \n";
+        tsoap->getLogger().debug("{%s}: Served in %d msecs", tsoap->threadName, (time/1000));
         i += 1;
         if (i == Config::getInstance().CONNECTIONS_BEFORE_RESET){
             i = 0;
+            tsoap->getLogger().debug("{%s}: Soap::destroy start", tsoap->threadName);
+            time = - clock();
             tsoap->destroy(); // deallocates all the memory allocated in soap_malloc(..)
+            tsoap->getLogger().debug("{%s}: Soap::destroy ends in %d msecs", tsoap->threadName, time + clock());
         }
     }
     return SOAP_OK;
@@ -313,8 +299,7 @@ void ShingleApp::loadDB() {
         }
         catch (...){
             flag = true;
-            *m_Log << "Database opening error! Trying to reconnect...\n";
-            m_Log->flush();
+            logger->error("{%s}: Database opening error! Trying to reconnect...", threadName);
             SLEEP(1000);
         }
     } while (flag);
