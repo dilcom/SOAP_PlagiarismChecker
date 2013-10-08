@@ -3,70 +3,35 @@
 using namespace DePlagiarism;
 using namespace std;
 
+template <class T>
+void Config::lookup(T *target, const char *name, const T &defaultValue){
+    try {
+        *target = conf.lookup(name);
+    } catch (...) {
+        *target = defaultValue;
+    }
+}
+void Config::lookup(string *target, const char *name, const string &defaultValue){
+    try {
+        *target = (string)(conf.lookup(name).c_str());
+    } catch (...) {
+        *target = defaultValue;
+    }
+}
+
+
 void Config::loadConfig(const char * configName) {
-    libconfig::Config conf;
     try {
         conf.readFile(configName);
-    } catch (...) {
-    }
-    try {
-        THRESHOLD_TO_SAVE = conf.lookup("treshold_to_save");
-    } catch (...) {
-        //set default variable
-        THRESHOLD_TO_SAVE = DePlagiarism::DefaultValues::THRESHOLD_TO_SAVE;
-    }
-    try {
-        ENV_NAME = conf.lookup("env_name").c_str();
-    } catch (...) {
-        //set default variable
-        ENV_NAME = DePlagiarism::DefaultValues::ENV_NAME;
-    }
-    try {
-        DOCS_DB_NAME = conf.lookup("docs_db_name").c_str();
-    } catch (...) {
-        //set default variable
-        DOCS_DB_NAME = DePlagiarism::DefaultValues::DOCS_DB_NAME;
-    }
-    try {
-        HASH_DB_NAME = conf.lookup("hash_db_name").c_str();
-    } catch (...) {
-        //set default variable
-        HASH_DB_NAME = DePlagiarism::DefaultValues::HASH_DB_NAME;
-    }
-    try {
-        GSOAP_IF = conf.lookup("address").c_str();
-    } catch (...) {
-        //set default variable
-        GSOAP_IF = DePlagiarism::DefaultValues::GSOAP_IF;
-    }
-    try {
-        REDIS_MAIN_CLIENT_ADDRESS = (string)conf.lookup("redis_address").c_str();
-    } catch (...) {
-        //set default variable
-        REDIS_MAIN_CLIENT_ADDRESS = DePlagiarism::DefaultValues::REDIS_MAIN_CLIENT_ADDRESS;
-    }
-    try {
-        REDIS_MAIN_CLIENT_PORT = conf.lookup("redis_port");
-    } catch (...) {
-        //set default variable
-        REDIS_MAIN_CLIENT_PORT = DePlagiarism::DefaultValues::REDIS_MAIN_CLIENT_PORT;
-    }
-    try {
-        SERVICE_PORT = conf.lookup("port");
-    } catch (...) {
-        //set default variable
-        SERVICE_PORT = DePlagiarism::DefaultValues::SERVICE_PORT; 
-    }
-    try {
-        CONNECTIONS_BEFORE_RESET = conf.lookup("connections_before_reset");
-    } catch (...) {
-        //set default variable
-        CONNECTIONS_BEFORE_RESET = DePlagiarism::DefaultValues::CONNECTIONS_BEFORE_RESET;    
-    }
-    try {
-        DOCUMENTS_IN_RESPONSE = conf.lookup("documents_in_response");
-    } catch (...) {
-        //set default variable
-        DOCUMENTS_IN_RESPONSE = DePlagiarism::DefaultValues::DOCUMENTS_IN_RESPONSE;
-    }
+    } catch (...) {}
+    lookup(&THRESHOLD_TO_SAVE, "treshold_to_save", DefaultValues::THRESHOLD_TO_SAVE);
+    lookup(&ENV_NAME, "env_name", DefaultValues::ENV_NAME);
+    lookup(&DOCS_DB_NAME, "docs_db_name", DefaultValues::DOCS_DB_NAME);
+    lookup(&HASH_DB_NAME, "hash_db_name", DefaultValues::HASH_DB_NAME);
+    lookup(&GSOAP_IF, "address", DefaultValues::GSOAP_IF);
+    lookup(&REDIS_MAIN_CLIENT_ADDRESS, "redis_address", DefaultValues::REDIS_MAIN_CLIENT_ADDRESS);
+    lookup(&REDIS_MAIN_CLIENT_PORT, "redis_port", DefaultValues::REDIS_MAIN_CLIENT_PORT);
+    lookup(&SERVICE_PORT, "port", DefaultValues::SERVICE_PORT);
+    lookup(&CONNECTIONS_BEFORE_RESET, "connections_before_reset", DefaultValues::CONNECTIONS_BEFORE_RESET);
+    lookup(&DOCUMENTS_IN_RESPONSE, "documents_in_response", DefaultValues::DOCUMENTS_IN_RESPONSE);
 }

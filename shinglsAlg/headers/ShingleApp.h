@@ -82,7 +82,6 @@ namespace DePlagiarism{
           \sa process_queue(), enqueue(), dequeue()
         */
         virtual int run(int port);
-        std::string nowToStr(); ///< Converts current date/time to string
         std::string ipToStr(); ///< Converts current client`s ipv4 to string
         ShingleApp();
         virtual ~ShingleApp();

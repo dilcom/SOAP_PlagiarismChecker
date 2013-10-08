@@ -16,16 +16,17 @@ namespace DePlagiarism {
         DeplagiarismLogger();
         DeplagiarismLogger(const DeplagiarismLogger & src){}
         DeplagiarismLogger & operator=(const DeplagiarismLogger&){}
-        log4cpp::PatternLayout * logLayout;
-        log4cpp::Appender * logFileAppender;
-        log4cpp::Appender * logConsoleAppender;
-        log4cpp::Category * logCategory;
-        //! Gives an access to the only instance of class.
+        log4cpp::PatternLayout * logLayout; ///< Layout contains pattern for output
+        log4cpp::Appender * logFileAppender; ///< Appender to store log in file
+        log4cpp::Appender * logConsoleAppender; ///< Appender to store log to console
+        log4cpp::Category * logCategory; ///< Objct used to output values to appenders
+        //! \brief Gives an access to the only instance of class.
         static DeplagiarismLogger & getInstance(){
             static DeplagiarismLogger INSTANCE;
             return INSTANCE;
         }
     public:
+        //! \brief Returnes category field of class
         static log4cpp::Category * getLogger() {
             return getInstance().logCategory;
         }

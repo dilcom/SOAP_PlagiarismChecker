@@ -8,6 +8,8 @@ DeplagiarismLogger::DeplagiarismLogger()
     logLayout = new log4cpp::PatternLayout();
     try {
         logLayout->setConversionPattern("[%p] %d{%d.%m.%Y %k:%M:%S.%l} %m%n");
+        // example:
+        // [ERROR] 10.01.2021 14:32:09.132 start MESSAGE MESSAGE MESSAGE end
     } catch(...){}
     logFileAppender = new FileAppender("DefaultAppender", DePlagiarism::DefaultValues::LOG_FILE_NAME);
     logFileAppender->setLayout(logLayout);

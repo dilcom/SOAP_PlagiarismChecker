@@ -16,6 +16,19 @@ namespace DePlagiarism {
         Config(){}
         Config(const Config & src){}
         Config & operator=(const Config&){}
+        /*! 
+         * \brief Searches for value in config
+         * \param target is pointer to variable where we want to store config value
+         * \param name is name of value in config file
+         * \param defaultValue is value that will be assigned to target if not found in file
+         */
+        template <class T>
+        void lookup(T *target, const char *name, const T &defaultValue); 
+        /*! 
+         * \brief special realization of lookup for string values
+         */
+        void lookup(std::string *target, const char *name, const std::string &defaultValue);
+        libconfig::Config conf;
     public:
         //! Returns the only object of that class.
         static Config & getInstance(){
@@ -54,9 +67,9 @@ namespace DePlagiarism {
         const float THRESHOLD_TO_SAVE = 0.6; ///< maximum value from which new texts won`t be added to the database
         const unsigned int DOCUMENTS_IN_RESPONSE = 10;///< maximum count of documents which will be responced to client
         const unsigned int CONNECTIONS_BEFORE_RESET = 50; ///< frequency between soap->destroy calls
-        const char REDIS_MAIN_CLIENT_ADDRESS [] = "127.0.0.1";
+        const std::string REDIS_MAIN_CLIENT_ADDRESS = "127.0.0.1";
         const unsigned int REDIS_MAIN_CLIENT_PORT = 6379;
-        const char GSOAP_IF []= "0.0.0.0"; ///< interface for gsoap
+        const std::string GSOAP_IF = "0.0.0.0"; ///< interface for gsoap
         const unsigned int SERVICE_PORT = 9999; ///< port used for soap server
         const std::string HASH_DB_NAME = "hash.db";
         const std::string DOCS_DB_NAME = "docs.db";
