@@ -178,7 +178,7 @@ int ShingleApp::run(int port){
         soap_thr[i] = new ShingleApp(*this);
         soap_thr[i]->setChild(i);
         soap_thr[i]->loadDB();
-        logger->notice("{%s}: Starting thread %d", threadName, threadID, i);
+        logger->notice("{%s}: Starting thread %d", threadName, i);
         THREAD_CREATE(&tid[i], process_queue, (void*)soap_thr[i], &threadID);
     }
     // 2. We`re accepting every connection on our port and putting it into queue

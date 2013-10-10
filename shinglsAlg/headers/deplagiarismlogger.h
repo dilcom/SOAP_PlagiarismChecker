@@ -16,7 +16,6 @@ namespace DePlagiarism {
         DeplagiarismLogger();
         DeplagiarismLogger(const DeplagiarismLogger & src){}
         DeplagiarismLogger & operator=(const DeplagiarismLogger&){}
-        log4cpp::PatternLayout * logLayout; ///< Layout contains pattern for output
         log4cpp::Appender * logFileAppender; ///< Appender to store log in file
         log4cpp::Appender * logConsoleAppender; ///< Appender to store log to console
         log4cpp::Category * logCategory; ///< Objct used to output values to appenders
