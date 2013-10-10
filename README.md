@@ -39,9 +39,15 @@ II. Redis Cluster
 
 Done!
 
-LIBS
+DEPENDENCIES
 
 qt-devel -> to build application with qmake
 libconfig
 libhireds -> if you use redis as data source
 libdb -> if you use BDB as data source
+
+Since 08102013 you need to install log4cpp:
+http://log4cpp.sourceforge.net/
+
+after installation do this with root:
+cp /usr/local/lib64/liblog4cpp.so.5 /usr/lib64/
