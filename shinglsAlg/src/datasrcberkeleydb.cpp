@@ -10,9 +10,9 @@ MUTEX_TYPE DePlagiarism::DataSrcBerkeleyDB::m_mtx;
 
 typedef vector<string>::const_iterator vecStrConstIter;
 
-DataSrcBerkeleyDB::DataSrcBerkeleyDB(const char * envName, const char *hashDbName, const char *docsDbName, bool mainFlag)
+DataSrcBerkeleyDB::DataSrcBerkeleyDB(const char * envName, const char *hashDbName, const char *docsDbName, bool mainFlag, char *threadName)
 {
-    mainClient = mainFlag;
+    m_mainClient = mainFlag;
     if (mainFlag){
         try{
             MAKE_DIR(envName);
@@ -38,10 +38,12 @@ DataSrcBerkeleyDB::DataSrcBerkeleyDB(const char * envName, const char *hashDbNam
         catch (...){
         }
     }
+    m_threadName = threadName;
+    m_logger = Log::getLogger();
 }
 
 DataSrcBerkeleyDB::~DataSrcBerkeleyDB(){
-    if (mainClient){
+    if (m_mainClient){
         saveDocNumber();
         m_dbSrcHashes->close(0);
         delete m_dbSrcHashes;

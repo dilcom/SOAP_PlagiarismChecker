@@ -54,14 +54,14 @@ namespace DePlagiarism{
         ClassComp objectcomp; ///< Compare obj for sort algorithm.
         std::vector<Pair> m_appResult; ///< Application result after serving a request.
         void findSimilar(t__text * txt);  ///< Function compares new text with others already stored in the DB.
-        log4cpp::Category * logger;  ///< Logger object
+        log4cpp::Category * m_logger;  ///< Logger object
         int shingleAlgorithm(t__text * txt, result *res); ///< Search for Plagiarism in \param txt using algorithm based on shingles.
         bool m_flagContinue;///< Setting to false will stop the serve cycle.
         bool m_mainEx;///< Setting to true will make instance to close DB handlers and free memory allocated for them
         DataSrcAbstract * m_dataSource; ///< Represents a db
         bool validateText(t__text * a);
     public:
-        char threadName[30]; ///< ThreadName for logger
+        char m_threadName[30]; ///< ThreadName for logger
         void loadDB();///< Initializes dataSorces
         void closeDB();///< Closes dataSorces
         void stop();///< Sets flagContinue to false, stops the application

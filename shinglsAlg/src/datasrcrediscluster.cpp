@@ -22,7 +22,7 @@ vector<string> * DePlagiarism::split(const string &s, char delim, vector<string>
 }
 
 
-DataSrcRedisCluster::DataSrcRedisCluster(const char * ipAddress, int port, bool imain)
+DataSrcRedisCluster::DataSrcRedisCluster(const char * ipAddress, int port, bool imain, char *threadName)
     :m_clientsCount(0)
 {
     m_main = imain;
@@ -48,6 +48,8 @@ DataSrcRedisCluster::DataSrcRedisCluster(const char * ipAddress, int port, bool 
         }
         freeReplyObject(clusterInfo);
     }
+    m_threadName = threadName;
+    m_logger = Log::getLogger();
 }
 
 void DataSrcRedisCluster::initializeCluster(string * configString, bool remap){
@@ -134,7 +136,7 @@ void DataSrcRedisCluster::initializeCluster(string * configString, bool remap){
     }
 }
 
-void DataSrcRedisCluster::reinitializeCluster(){
+void DataSrcRedisCluster::reinitializeCluster() {
     for (int i = 0; i < m_clientsCount; i += 1){
         if (m_clients[i] != NULL && m_clients[i]->err == REDIS_OK){
             redisReply * rep = (redisReply *)redisCommand(m_clients[i], "exec"); // just to be sure we`re outside of transaction
@@ -206,8 +208,9 @@ void DataSrcRedisCluster::reinitializeCluster(){
             }
             delete[] oldClients;
         }
-        catch(...) {
+        catch (const char * str) {
             // returning to previous state if we failed
+            m_logger->error("{%s}: Initialize cluster failed: '%s'. Waiting 5 seconds before next try", m_threadName, str);
             deinitializeCluster(); // deletes all the new nodes except mainClient
             m_mainClient = oldClients[0];
             m_clients = oldClients;
@@ -294,21 +297,21 @@ void DataSrcRedisCluster::save(const unsigned int * hashes, unsigned int count, 
             docNumber = docNumReply->integer;
             freeReplyObject(docNumReply);
         }
-        catch(...){
+        catch (const char * str) {          
+            m_logger->error("{%s}: Cluster fail: '%s'", m_threadName, str);
             try {
                 reinitializeCluster();
             }
-            catch (...) {}
+            catch (const char * nestedStr) {
+                m_logger->error("{%s}: Reinitialize cluster failed: '%s'. Waiting 5 seconds before next try", m_threadName, nestedStr);
+                SLEEP(5000);
+            }
             flag = true;
         }
     } while (flag);
-    char key[30];
-    sprintf(key, "document:number:%d", docNumber);
-    int lenDoc = strlen(key);
     do {
         flag = false;
         try {
-            redisContext * docContext = m_clients[slotMap[crc16(key, lenDoc) & 0x3fff]];
             // 1. start a transaction
             for (int i = 0; i < m_clientsCount; i += 1){
                 redisCommandWithoutReply(m_clients[i], "multi");
@@ -323,6 +326,10 @@ void DataSrcRedisCluster::save(const unsigned int * hashes, unsigned int count, 
                 redisCommandWithoutReply(context, "sadd %b %d", tmp, len, docNumber);
             }
             // 2.2. docNumber->document
+            char key[30];
+            sprintf(key, "document:number:%d", docNumber);
+            int lenDoc = strlen(key);
+            redisContext * docContext = m_clients[slotMap[crc16(key, lenDoc) & 0x3fff]];
             redisCommandWithoutReply(docContext, "hset %b textName %b", key, (size_t) lenDoc, txt->name, header.textName_len); // textName is a name of field in hash
             redisCommandWithoutReply(docContext, "hset %b textData %b", key, (size_t) lenDoc, txt->streamData, header.data_len);
             redisCommandWithoutReply(docContext, "hset %b authorName %b", key, (size_t) lenDoc, txt->authorName, header.authorName_len);
@@ -335,11 +342,15 @@ void DataSrcRedisCluster::save(const unsigned int * hashes, unsigned int count, 
                 redisCommandWithoutReply(m_clients[i], "exec");
             }
         }
-        catch(...){
+        catch (const char * str) {            
+            m_logger->error("{%s}: Cluster fail: '%s'", m_threadName, str);
             try {
                 reinitializeCluster();
             }
-            catch (...) {}
+            catch (const char * nestedStr) {
+                m_logger->error("{%s}: Reinitialize cluster failed: '%s'. Waiting 5 seconds before next try", m_threadName, nestedStr);
+                SLEEP(5000);
+            }
             flag = true;
         }
     } while (flag);
@@ -394,11 +405,15 @@ void DataSrcRedisCluster::getDocument(unsigned int docNumber, t__text **trgtPtr,
             strcpy(trgt->date, rep->str);
             freeReplyObject(rep);
         }
-        catch(...){
+        catch (const char * str) {            
+            m_logger->error("{%s}: Cluster fail: '%s'", m_threadName, str);
             try {
                 reinitializeCluster();
             }
-            catch (...) {}
+            catch (const char * nestedStr) {
+                m_logger->error("{%s}: Reinitialize cluster failed: '%s'. Waiting 5 seconds before next try", m_threadName, nestedStr);
+                SLEEP(5000);
+            }
             flag = true;
         }
     } while (flag);
@@ -431,11 +446,15 @@ getIdsByHashesResult__t * DataSrcRedisCluster::getIdsByHashes(const unsigned int
                 freeReplyObject(rep);
             }
         }
-        catch(...) {
+        catch (const char * str) {            
+            m_logger->error("{%s}: Cluster fail: '%s'", m_threadName, str);
             try {
                 reinitializeCluster();
             }
-            catch (...) {}
+            catch (const char * nestedStr) {
+                m_logger->error("{%s}: Reinitialize cluster failed: '%s'. Waiting 5 seconds before next try", m_threadName, nestedStr);
+                SLEEP(5000);
+            }
             flag = true;
         }
     } while (flag);

@@ -37,6 +37,8 @@ namespace DePlagiarism{
               \sa getIdsByHashes(), save()
             */
         virtual void getDocument(unsigned int docNumber, t__text **trgt, soap * parent) = 0;
+        char * m_threadName; ///< ThreadName for logger (pointer to owners threadName)
+        log4cpp::Category * m_logger;
         virtual ~DataSrcAbstract() {};
     };
 }

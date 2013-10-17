@@ -31,7 +31,7 @@ namespace DePlagiarism {
         static uint16_t m_lastMapping; ///< Contains crc16 hash of last config.
         static MUTEX_TYPE m_mtx; ///< Used in reinitializeCluster to prevent remapping.
     public:
-        DataSrcRedisCluster(const char * ipAddress, int port, bool main);
+        DataSrcRedisCluster(const char * ipAddress, int port, bool main, char * threadName);
         virtual ~DataSrcRedisCluster();
         virtual getIdsByHashesResult__t * getIdsByHashes(const unsigned int * hashes, unsigned int count);
         virtual void save(const unsigned int * hashes, unsigned int count, DocHeader header, t__text * txt);

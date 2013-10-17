@@ -6,14 +6,14 @@ using namespace std;
 template <class T>
 void Config::lookup(T *target, const char *name, const T &defaultValue){
     try {
-        *target = conf.lookup(name);
+        *target = m_conf.lookup(name);
     } catch (...) {
         *target = defaultValue;
     }
 }
 void Config::lookup(string *target, const char *name, const string &defaultValue){
     try {
-        *target = (string)(conf.lookup(name).c_str());
+        *target = (string)(m_conf.lookup(name).c_str());
     } catch (...) {
         *target = defaultValue;
     }
@@ -22,7 +22,7 @@ void Config::lookup(string *target, const char *name, const string &defaultValue
 
 void Config::loadConfig(const char * configName) {
     try {
-        conf.readFile(configName);
+        m_conf.readFile(configName);
     } catch (...) {}
     lookup(&THRESHOLD_TO_SAVE, "treshold_to_save", DefaultValues::THRESHOLD_TO_SAVE);
     lookup(&ENV_NAME, "env_name", DefaultValues::ENV_NAME);

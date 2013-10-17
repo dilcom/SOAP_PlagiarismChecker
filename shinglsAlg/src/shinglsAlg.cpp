@@ -125,7 +125,7 @@ int http_get(struct soap *soap) {
     char *s = strchr(soap->path, '?');
     if (!s || strcmp(s, "?wsdl"))
         return SOAP_GET_METHOD;
-    char * thName = ((ShingleApp*)soap)->threadName;
+    char * thName = ((ShingleApp*)soap)->m_threadName;
     mainCat->debug("{%s}: HTTP get request recieved", thName);
     fd = fopen("shingle.wsdl", "rb"); // open WSDL file to copy
     if (!fd) {        
@@ -164,7 +164,7 @@ void * runService(void * app)
     mainCat->info("Server putted up!");
     srv->setMain();
     while (srv->run(Config::getInstance().SERVICE_PORT)){
-        mainCat->alert("{%s}: Emergency shoutdown! Waiting 10 seconds.", srv->threadName);
+        mainCat->alert("{%s}: Emergency shoutdown! Waiting 10 seconds.", srv->m_threadName);
         SLEEP(10000);
     }
     return NULL;

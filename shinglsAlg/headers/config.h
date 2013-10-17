@@ -28,7 +28,7 @@ namespace DePlagiarism {
          * \brief special realization of lookup for string values
          */
         void lookup(std::string *target, const char *name, const std::string &defaultValue);
-        libconfig::Config conf;
+        libconfig::Config m_conf;
     public:
         //! Returns the only object of that class.
         static Config & getInstance(){
