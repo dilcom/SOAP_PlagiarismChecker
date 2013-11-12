@@ -6,7 +6,6 @@
 #else
     #include "datasrcrediscluster.h"
 #endif
-using namespace DePlagiarism;
 
 namespace DePlagiarism{
 

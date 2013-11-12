@@ -61,6 +61,7 @@ namespace DePlagiarism{
         DataSrcAbstract * m_dataSource; ///< Represents a db
         bool validateText(t__text * a);
     public:
+        static ConcurrentQueue<SOAP_SOCKET> m_clientRequests; ///< Requests from clients
         char m_threadName[30]; ///< ThreadName for logger
         void loadDB();///< Initializes dataSorces
         void closeDB();///< Closes dataSorces

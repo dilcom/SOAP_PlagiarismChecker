@@ -5,12 +5,7 @@ using namespace std;
 typedef vector<unsigned int>::const_iterator vecConstIt;
 typedef map<unsigned int, unsigned int>::const_iterator mapConstIt;
 
-// Multithread handling globals
-SOAP_SOCKET queue[DefaultValues::MAX_QUEUE]; // The global request queue of sockets
-unsigned int head = 0, tail = 0; // Queue head and tail
-COND_TYPE queue_cv; // used only in socket queuing
-MUTEX_TYPE queue_mx; // used only in socket queuing
-// Multithread handling end
+ConcurrentQueue<SOAP_SOCKET> ShingleApp::m_clientRequests(DefaultValues::MAX_QUEUE);
 
 bool ShingleApp::validateText(t__text * a){
     if (a->streamData == NULL)
@@ -170,8 +165,6 @@ int ShingleApp::run(int port){
         return 1;
     }
     m_logger->debug("{%s}: Socket connection successful %d", m_threadName, m);
-    COND_SETUP(queue_cv);
-    MUTEX_SETUP(queue_mx);
     // 1. we create runtime contexts for threads and run them
     for (i = 0; i < DefaultValues::MAX_THR; i++) {
         unsigned threadID;
@@ -201,14 +194,14 @@ int ShingleApp::run(int port){
         }
         m_logger->debug("{%s}: One more socket %d connection from IP %s", m_threadName, s, ipToStr().c_str());
         // SOAP_EOM means the following: "too many connections in queue, please wait for a slot, sir"
-        while (enqueue(s) == SOAP_EOM)
-            SLEEP(1);
+        while (!m_clientRequests.push(s))
+            SLEEP(10);
     }
 
     // 3. Now we want to stop all the threads, so lets fill the queue with invalid sockets and threads will stop itself
     for (i = 0; i < DefaultValues::MAX_THR; i++) {
-        while (enqueue(SOAP_INVALID_SOCKET) == SOAP_EOM)
-            SLEEP(1);
+        while (!m_clientRequests.push(SOAP_INVALID_SOCKET))
+            SLEEP(10);
     }
     // 4. Waiting for all the threads to end
     for (i = 0; i < DefaultValues::MAX_THR; i++) {
@@ -217,8 +210,6 @@ int ShingleApp::run(int port){
         m_logger->notice("{%s}: ...terminated", m_threadName);
         delete soap_thr[i];
     }
-    COND_CLEANUP(queue_cv);
-    MUTEX_CLEANUP(queue_mx);
     return 0;
 }
 
@@ -226,16 +217,13 @@ log4cpp::Category & ShingleApp::getLogger() {
     return *m_logger;
 }
 
-#ifdef WIN32
-unsigned _stdcall DePlagiarism::process_queue(void *soap)
-#else
+
 void *DePlagiarism::process_queue(void *soap)
-#endif
 {
     ShingleApp *tsoap = static_cast<ShingleApp*>(soap);
     unsigned int i = 0;
     while (true) {
-        tsoap->socket = dequeue();
+        tsoap->socket = ShingleApp::m_clientRequests.pop();
         if (!soap_valid_socket(tsoap->socket))
             break;
         unsigned int time = - clock();
@@ -253,38 +241,6 @@ void *DePlagiarism::process_queue(void *soap)
     }
     return SOAP_OK;
 }
-
-int DePlagiarism::enqueue(SOAP_SOCKET sock) {
-    int status = SOAP_OK;
-    unsigned int next;
-    MUTEX_LOCK(queue_mx);
-    next = tail + 1;
-    if (next >= DefaultValues::MAX_QUEUE)
-        next = 0;
-    if (next == head)
-        status = SOAP_EOM;
-    else
-    {
-        queue[tail] = sock;
-        tail = next;
-    }
-    COND_SIGNAL(queue_cv);
-    MUTEX_UNLOCK(queue_mx);
-    return status;
-}
-
-SOAP_SOCKET DePlagiarism::dequeue() {
-    SOAP_SOCKET sock;
-    MUTEX_LOCK(queue_mx);
-    while (head == tail)
-        COND_WAIT(queue_cv, queue_mx);
-    sock = queue[head++];
-    if (head >= DefaultValues::MAX_QUEUE)
-        head = 0;
-    MUTEX_UNLOCK(queue_mx);
-    return sock;
-}
-
 
 void ShingleApp::loadDB() {
     bool flag = false;

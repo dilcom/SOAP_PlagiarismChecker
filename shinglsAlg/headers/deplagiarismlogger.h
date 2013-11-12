@@ -1,7 +1,7 @@
 #ifndef DEPLAGIARISMLOGGER_H
 #define DEPLAGIARISMLOGGER_H
 
-#include <config.h>
+#include <concurrentqueue.h>
 
 namespace DePlagiarism {
     //! Singleton class.

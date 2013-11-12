@@ -82,9 +82,9 @@ namespace DePlagiarism {
         const bool LOG_EVERY_FCALL = false;    
         
         // multithreading constants
-        const unsigned int BACKLOG = 100;	///< Max request backlog
-        const unsigned int MAX_THR = 10; ///< Size of thread pool
-        const unsigned int MAX_QUEUE = 1000; ///< Max. size of request queue    
+        const size_t BACKLOG = 100;	///< Max request backlog
+        const size_t MAX_THR = 10; ///< Size of thread pool
+        const size_t MAX_QUEUE = 1000; ///< Max. size of request queue    
     }
 }
 
