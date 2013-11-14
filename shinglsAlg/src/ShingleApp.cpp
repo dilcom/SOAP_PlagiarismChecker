@@ -5,6 +5,7 @@ using namespace std;
 typedef vector<unsigned int>::const_iterator vecConstIt;
 typedef map<unsigned int, unsigned int>::const_iterator mapConstIt;
 
+DataSrcAbstract * ShingleApp::m_dataSource;
 ConcurrentQueue<SOAP_SOCKET> ShingleApp::m_clientRequests(DefaultValues::MAX_QUEUE);
 
 bool ShingleApp::validateText(t__text * a){
@@ -59,7 +60,8 @@ ShingleApp::ShingleApp(void)
 
 ShingleApp::~ShingleApp(void)
 {	
-    closeDB();
+    if (m_mainEx)
+        closeDB();
 }
 
 int ShingleApp::CompareText(t__text * txt, result * res){
@@ -170,7 +172,6 @@ int ShingleApp::run(int port){
         unsigned threadID;
         soap_thr[i] = new ShingleApp(*this);
         soap_thr[i]->setChild(i);
-        soap_thr[i]->loadDB();
         m_logger->notice("{%s}: Starting thread %d", m_threadName, i);
         THREAD_CREATE(&tid[i], process_queue, (void*)soap_thr[i], &threadID);
     }
@@ -250,7 +251,7 @@ void ShingleApp::loadDB() {
 #ifdef BERKELEYDB
             m_dataSource = new DataSrcBerkeleyDB(Config::getInstance().ENV_NAME.c_str(), Config::getInstance().HASH_DB_NAME.c_str(), Config::getInstance().DOCS_DB_NAME.c_str(), m_mainEx, m_threadName);
 #else
-            m_dataSource = new DataSrcRedisCluster(Config::getInstance().REDIS_MAIN_CLIENT_ADDRESS.c_str(), Config::getInstance().REDIS_MAIN_CLIENT_PORT, m_mainEx, m_threadName);
+            m_dataSource = new DataSrcRedisCluster(Config::getInstance().REDIS_MAIN_CLIENT_ADDRESS.c_str(), Config::getInstance().REDIS_MAIN_CLIENT_PORT, m_threadName);
 #endif
         }
         catch (...){

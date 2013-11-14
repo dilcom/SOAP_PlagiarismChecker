@@ -58,7 +58,7 @@ namespace DePlagiarism{
         int shingleAlgorithm(t__text * txt, result *res); ///< Search for Plagiarism in \param txt using algorithm based on shingles.
         bool m_flagContinue;///< Setting to false will stop the serve cycle.
         bool m_mainEx;///< Setting to true will make instance to close DB handlers and free memory allocated for them
-        DataSrcAbstract * m_dataSource; ///< Represents a db
+        static DataSrcAbstract * m_dataSource; ///< Represents a db
         bool validateText(t__text * a);
     public:
         static ConcurrentQueue<SOAP_SOCKET> m_clientRequests; ///< Requests from clients

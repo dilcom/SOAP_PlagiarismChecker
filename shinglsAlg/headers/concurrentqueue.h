@@ -14,15 +14,13 @@ namespace DePlagiarism {
         ConcurrentQueue & operator=(ConcurrentQueue & src){}
         MUTEX_TYPE m_mtx;
         COND_TYPE m_condition;
-        T * m_data;
         size_t m_maxLength;
         size_t m_head, m_tail;
+        T * m_data;
     public:
-        ConcurrentQueue(size_t size) {
-            m_maxLength = size;
-            m_head = 0;
-            m_tail = 0;
-            m_data = new T[m_maxLength];
+        ConcurrentQueue(size_t size):
+            m_maxLength(size), m_head(0), m_tail(0), m_data(new T[size])
+        {
             COND_SETUP(m_condition);
             MUTEX_SETUP(m_mtx);
         }

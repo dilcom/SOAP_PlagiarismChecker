@@ -8,11 +8,11 @@ namespace DePlagiarism{
     class DataSrcBerkeleyDB : public DePlagiarism::DataSrcAbstract
     {
     private:
-        static DbEnv * m_env;
-        static Db * m_dbSrcHashes,
+        DbEnv * m_env;
+        Db * m_dbSrcHashes,
         * m_dbSrcDocs;
-        static unsigned int m_docNumber; ///< current document number
-        static MUTEX_TYPE m_mtx;///< crossplatform mutex
+        unsigned int m_docNumber; ///< current document number
+        MUTEX_TYPE m_mtx;///< crossplatform mutex
         void saveDocNumber(); ///< saves current document number to DB
         bool m_mainClient; ///< if true, object constructs and frees static envelope and dbs
     public:
