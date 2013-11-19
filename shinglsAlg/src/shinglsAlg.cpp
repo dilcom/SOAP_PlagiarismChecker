@@ -55,14 +55,14 @@ void soapStop(ShingleApp * srv, THREAD_TYPE tid);
 int main(int argc, char* argv[]) {
     setlocale(LC_ALL, "ru_RU.UTF-8");
     THREAD_TYPE tid;
+    const char * configName = ( argc > 2 ) ? argv[2] : DefaultValues::CONFIG_FILE.c_str();
+    mainCat = Log::getLogger();
+    ShingleApp * srv = soapStart(&tid, configName);
     struct sigaction action;
     memset(&action, 0, sizeof(struct sigaction));
     action.sa_handler = sigterm_handler;
     sigaction(SIGTERM, &action, NULL);
     sigaction(SIGINT, &action, NULL);
-    const char * configName = ( argc > 2 ) ? argv[2] : DefaultValues::CONFIG_FILE.c_str();
-    mainCat = Log::getLogger();
-    ShingleApp * srv = soapStart(&tid, configName);
     do {
         cin >> commandStr;
         if (commandStr == reloadCommand) {

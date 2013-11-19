@@ -55,6 +55,7 @@ void ShingleApp::setChild(int i){
 ShingleApp::ShingleApp(void)
 {
     setMain();
+    m_flagContinue = true; // once turned to false it will stop an application after next socket accept
     loadDB();
 }
 
@@ -156,7 +157,6 @@ void ShingleApp::stop(){
 }
 
 int ShingleApp::run(int port){
-    m_flagContinue = true; // once turned to false it will stop an application after next socket accept
     ShingleApp *soap_thr[DefaultValues::MAX_THR]; // each thread needs a runtime context
     THREAD_TYPE tid[DefaultValues::MAX_THR];
     SOAP_SOCKET m, s;
@@ -259,7 +259,7 @@ void ShingleApp::loadDB() {
             m_logger->error("{%s}: Database opening error! Trying to reconnect...", m_threadName);
             SLEEP(1000);
         }
-    } while (flag);
+    } while (flag && m_flagContinue);
 }
 
 void ShingleApp::closeDB(){

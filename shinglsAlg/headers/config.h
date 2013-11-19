@@ -83,7 +83,7 @@ namespace DePlagiarism {
         
         // multithreading constants
         const size_t BACKLOG = 100;	///< Max request backlog
-        const size_t MAX_THR = 15; ///< Size of thread pool
+        const size_t MAX_THR = 1; ///< Size of thread pool
         const size_t MAX_QUEUE = 1000; ///< Max. size of request queue  
         const size_t MAX_QUEUE_REDIS = 1000; ///< Max. size of redis tasks queue    
     }

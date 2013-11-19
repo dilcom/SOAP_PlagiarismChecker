@@ -84,22 +84,30 @@ void * DePlagiarism::processRedisQuerries(void * client) {
     DataSrcRedisCluster * localClient = static_cast<DataSrcRedisCluster*>(client);
     DataSrcRedisCluster::Task *localTask;
     while ( (localTask = localClient->m_dbQueue.pop()) != NULL) {
+        bool flag = true; //true if we should signal at the end        
         for (vecTasksIter i = localTask->m_querries.begin(); i != localTask->m_querries.end(); i++) {
             DataSrcRedisCluster::Task::BasicQuerry * j = *i;
             redisReply * rep;
             try {
                 rep = localClient->getRedisReply(j->m_cont, j->m_command, j->m_len);
             } catch (...) {
-                localClient->reinitializeCluster();
+                try {
+                    localClient->reinitializeCluster();
+                } catch (const char * str) {
+                    localClient->m_logger->error("{%s}: Initialize cluster failed: '%s'. Sleep 5 seconds before next task", localClient->m_threadName, str);
+                    SLEEP(5000);
+                }
                 localTask->signalReady(true);
                 break;
+                flag = false;
             }
             if (j->m_needResult)
                 localTask->addResult(rep);
             else
                 freeReplyObject(rep);
         }
-        localTask->signalReady(false);
+        if (flag)
+            localTask->signalReady(false);
     }
 }
 
@@ -468,18 +476,18 @@ void DataSrcRedisCluster::getDocument(unsigned int docNumber, t__text **trgtPtr,
             }            
             trgt->name = reinterpret_cast<char*>(soap_malloc(parent, rep->len + 1));
             strcpy(trgt->name, rep->str);
-            rep = *(i++);
+            rep = *(++i);
             trgt->streamData = reinterpret_cast<char*>(soap_malloc(parent, rep->len + 1));
             strcpy(trgt->streamData, rep->str);
-            rep = *(i++);
+            rep = *(++i);
             trgt->authorName = reinterpret_cast<char*>(soap_malloc(parent, rep->len + 1));
             strcpy(trgt->authorName, rep->str);
-            rep = *(i++);
+            rep = *(++i);
             trgt->authorGroup = reinterpret_cast<char*>(soap_malloc(parent, rep->len + 1));
             strcpy(trgt->authorGroup, rep->str);
-            rep = *(i++);
+            rep = *(++i);
             trgt->type = *((t__type*)(rep->str));
-            rep = *(i++);
+            rep = *(++i);
             trgt->date = reinterpret_cast<char*>(soap_malloc(parent, rep->len + 1));
             strcpy(trgt->date, rep->str);
         } else {
