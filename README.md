@@ -1,4 +1,4 @@
-shingleServerSOAP
+SOAP_PlagiarismChecker
 =================
 
 HOWTO install
