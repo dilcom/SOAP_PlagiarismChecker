@@ -10,9 +10,9 @@ namespace DePlagiarism {
     //! Wrapper class for redis cluster.
     class DataSrcRedisCluster : public DataSrcAbstract
     {
-        //! Contains data that needs synchronous access to it
+        //! Contains tasks in form that can be used by another thread
         class Task {
-            //! Contains all the data needed for a single request
+            //! Just a structure to contain everything we need to do one request.
             struct BasicQuerry {
                 char * m_command;
                 int m_len;
@@ -35,18 +35,41 @@ namespace DePlagiarism {
         public:
             Task();
             ~Task();
+            /*!
+             *\brief Adds simple querry into list holded by Task
+              \param cont is a redis context that will handle the request
+              \param needResult shows whether result of the command will be returned or not
+              \param format is format string for vargs following it
+            */
             void addQuerry(redisContext * cont, bool needResult, const char * format, ...);
+            /*!
+             *\brief Adds result into Task`s result list
+              \param rep is a redis reply returned by context
+            */
             void addResult(redisReply * rep);
+            /*!
+             *\brief Used to getResult when Task is complete
+              \return Const pointer to result vector
+            */
             const std::vector<redisReply*> * getResult();
+            /*!
+              Signals to thread, that waits for result in waitForResult that task is done.
+              \param error shows whether an error occurred or not
+            */
             void signalReady(bool error);
+            /*!
+              Makes thread to wait until task is complete.
+              \return true if everything OK otherwise false
+            */
             bool waitForResult();
-            void clearResult();
-            void clearTasks();
-            void clear();
+            void clearResult(); ///< Deletes results
+            void clearTasks(); ///< Deletes querries
+            void clear(); ///< clearResult + clearTasks
         };
 
     private:
-        int threadID;
+        int threadID; ///< Thread id of worker that use this object.
+        THREAD_TYPE m_clientThread; ///< Thread of worker that use this object.
         friend void * DePlagiarism::processRedisQuerries(void * client);
         redisContext * m_mainClient; ///< Pointer to main node client; this pointer also in m_clients[0] !!!
         redisContext ** m_clients; ///< Array of clients, every one of which has an opened session with cluster node.
@@ -56,18 +79,24 @@ namespace DePlagiarism {
         uint8_t slotMap[16384]; ///< Map which shows which node will serve request.
         uint16_t m_lastMapping; ///< Contains crc16 hash of last config.
         ConcurrentQueue<Task*> m_dbQueue; ///< Queue of tasks. One thread must perfrom them.
-        THREAD_TYPE m_clientThread;
         void reinitializeCluster(); ///< Renews config and rebuilds the object to satisfy it.
         void deinitializeCluster(); ///< Correctly frees all the memory allocated by object.
         void redisCommandWithoutReply(redisContext *c, const char *format, ...); ///< Throws an exception if command was refused.
         redisReply * redisCommandWithReply(redisContext *c, const char *format, ...);
-        redisReply * getRedisReply(redisContext *c, char *cmd, size_t len); ///< Throws an exception if command was refused.
+        /*!
+         *\brief Used by asynchro worker to perform requests to redis
+          \param c is a redis context that will handle the request
+          \param cmd is a command formatted as redis command (result of redisFormat)
+          \param len is length of command
+        */
+        redisReply * getRedisReply(redisContext *c, char *cmd, size_t len);
         //! Initializes cluster.
             /*!
               \param config is a result of "cluster nodes" command, addressed to any node of cluster.
               \param remap tell whether we should build slotMap again or not.
             */
         void initializeCluster(std::string * configString); ///< configStr is a string in reply from main redis node
+        //! Stops worker thread (adds NULL into queue, when worker will pop it he will stop).
         void stop();
     public:
         DataSrcRedisCluster(const char * ipAddress, int port, const char *threadName);
